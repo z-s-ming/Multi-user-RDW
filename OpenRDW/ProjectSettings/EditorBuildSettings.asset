@@ -8,4 +8,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/OpenRDW/Scenes/OpenRDW Scene.unity
     guid: c34e7a5b999447f47b3d87bb781a9054
-  m_configObjects: {}
+  m_configObjects:
+    Unity.XR.OpenVR.Settings: {fileID: 11400000, guid: 7ac1ac5599035cb4992a1db20b5d2a9f,
+      type: 2}
