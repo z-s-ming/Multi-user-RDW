@@ -1,9 +1,9 @@
 {
     "name": "SteamVR",
     "references": [
-        "SteamVR_Windows_EditorHelper",
-        "Unity.XR.OpenVR",
-        "UnityEngine.SpatialTracking"
+        "GUID:256e975f9c776644aa4d86bc0c894f33",
+        "GUID:35b9c7a103b322f43805bf1744257ac7",
+        "GUID:ba171b3dd2a51234ab864770f99741a5"
     ],
     "includePlatforms": [],
     "excludePlatforms": [

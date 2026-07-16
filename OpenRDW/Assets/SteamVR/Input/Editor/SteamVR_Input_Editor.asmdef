@@ -1,8 +1,8 @@
 {
     "name": "SteamVR_Input_Editor",
     "references": [
-        "SteamVR",
-        "Unity.XR.OpenVR"
+        "GUID:1fbf338ef6b952a448262a7ff7df5fe4",
+        "GUID:35b9c7a103b322f43805bf1744257ac7"
     ],
     "includePlatforms": [
         "Editor"
