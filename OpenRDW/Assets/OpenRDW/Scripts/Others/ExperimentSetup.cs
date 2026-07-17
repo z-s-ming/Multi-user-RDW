@@ -38,8 +38,9 @@ public class ExperimentSetup
     public float squareWidth;
     public List<List<Vector2>> obstaclePolygons;
     public int obstacleType;
+    public int randomSeed;
     public ExperimentSetup(List<AvatarInfo> avatars, TrackingSpaceChoice trackingSpaceChoice, List<Vector2> trackingSpacePoints, float squareWidth,
-        List<List<Vector2>> obstaclePolygons, int obstacleType)
+        List<List<Vector2>> obstaclePolygons, int obstacleType, int randomSeed = 3041)
     {
         this.avatars = avatars;
         this.trackingSpaceChoice = trackingSpaceChoice;
@@ -47,5 +48,6 @@ public class ExperimentSetup
         this.squareWidth = squareWidth;
         this.obstaclePolygons = obstaclePolygons;
         this.obstacleType = obstacleType;
+        this.randomSeed = randomSeed;
     }
 }

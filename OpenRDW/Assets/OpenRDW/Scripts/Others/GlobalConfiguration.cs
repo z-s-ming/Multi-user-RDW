@@ -44,6 +44,12 @@ public class GlobalConfiguration : MonoBehaviour
     [Tooltip("If use targetFPS, otherwise use system time")]
     public bool useSimulationTime;
 
+    [HideInInspector]
+    public int randomSeed = 3041;
+
+    [Tooltip("If true, repeated trials use the fixed ExperimentSeedSequence. If false, each trial receives a non-reproducible random seed.")]
+    public bool guaranteeExperimentReproducibility = true;
+
     [Tooltip("If show in overview mode when every trial begins")]
     public bool overviewModeEveryTrial;
 
@@ -83,7 +89,7 @@ public class GlobalConfiguration : MonoBehaviour
     public float targetFPS = 60;
 
     [Tooltip("Number of trails will be repeated")]
-    [Range(1, 10)]
+    [Range(1, 100)]
     public int trialsForRepeating;
 
     [HideInInspector]
@@ -268,7 +274,57 @@ public class GlobalConfiguration : MonoBehaviour
     public bool exportVideo;
 
     [HideInInspector]
-    public StatisticsLogger statisticsLogger;    
+    public StatisticsLogger statisticsLogger;
+
+    [Tooltip("Optional multi-user proactive reset decision layer")]
+    public MultiUserProactiveResetController proactiveResetController;
+
+    #endregion
+
+    #region Proactive Reset
+
+    [Header("Proactive Reset")]
+    [Tooltip("B0 keeps the original passive reset baseline. B2/B3 enable proactive reset requests.")]
+    public MultiUserProactiveResetController.Strategy proactiveResetStrategy = MultiUserProactiveResetController.Strategy.PassiveOnly;
+
+    [Tooltip("Decision interval for proactive reset policies")]
+    public float proactiveDecisionDt = 0.5f;
+
+    [Tooltip("Trigger threshold for W_H")]
+    public float proactiveThetaW = 0.25f;
+
+    [Tooltip("Trigger threshold for G_peak")]
+    public float proactiveThetaG = 0.5f;
+
+    [Tooltip("Cooldown for proactive reset on the same user")]
+    public float proactiveResetCooldown = 2.0f;
+
+    [Tooltip("Recent history length used to estimate velocity for prediction")]
+    public float proactiveVelocityHistorySeconds = 1.0f;
+
+    [Tooltip("Prediction horizon H")]
+    public float proactivePredictionHorizon = 3.0f;
+
+    [Tooltip("Prediction rollout step")]
+    public float proactivePredictionStep = 0.5f;
+
+    [Tooltip("Pause duration assumed when evaluating Reset(i) in prediction")]
+    public float proactiveResetDurationForPrediction = 1.2f;
+
+    public float proactiveUserRadius = 0.3f;
+    public float proactiveSafeBoundaryDistance = 0.8f;
+    public float proactiveEmergencyBoundaryDistance = 0.5f;
+    public float proactiveSafePairDistance = 1.0f;
+    public float proactiveSeverePairDistance = 0.6f;
+    public float proactiveBoundaryWeight = 1.0f;
+    public float proactivePairwiseWeight = 1.0f;
+    public float proactiveResetPressureWeight = 0.5f;
+
+    [Tooltip("For B3, require Reset(i) to reduce predicted W_H before requesting reset")]
+    public bool proactiveRequirePositiveCounterfactualBenefit = true;
+
+    [Tooltip("For B3, optional interruption cost weight. Keep 0 for the first validation pass.")]
+    public float proactiveInterruptCostWeight = 0f;
 
     #endregion
 
@@ -314,6 +370,9 @@ public class GlobalConfiguration : MonoBehaviour
     {        
         startTimeOfProgram = Utilities.GetTimeString();
         statisticsLogger = GetComponent<StatisticsLogger>();
+        proactiveResetController = GetComponent<MultiUserProactiveResetController>();
+        EnsureProactiveResetController();
+        ApplyProactiveResetSettings();
 
         userInterfaceManager = GetComponent<UserInterfaceManager>();
         cameraVirtualTopForAllAvatars = transform.Find("Virtual Top View Cam For All Avatars").GetComponent<Camera>();                
@@ -337,23 +396,7 @@ public class GlobalConfiguration : MonoBehaviour
         experimentIterator = 0;
         trialsForCurrentExperiment = trialsForRepeating;
         
-        //pre-defined procedurally generated paths, ensure the same in every trial
-        float sumOfDistances, sumOfRotations;
-        pathSeedChoiceToWaypoints = new Dictionary<PathSeedChoice, List<Vector2>>();
-        pathSeedChoiceToWaypoints[PathSeedChoice._90Turn] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeed90Turn(),generatedPathLength, out sumOfDistances, out sumOfRotations);
-        pathSeedChoiceToWaypoints[PathSeedChoice.RandomTurn] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeedRandomTurn(), generatedPathLength, out sumOfDistances, out sumOfRotations);        
-        pathSeedChoiceToWaypoints[PathSeedChoice.StraightLine] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeedStraightLine(), generatedPathLength, out sumOfDistances, out sumOfRotations);
-        pathSeedChoiceToWaypoints[PathSeedChoice.Sawtooth] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeedSawtooth(), generatedPathLength, out sumOfDistances, out sumOfRotations);
-        pathSeedChoiceToWaypoints[PathSeedChoice.Circle] = VirtualPathGenerator.GenerateCirclePath(pathCircleRadius, pathCircleWaypointNum, out sumOfDistances, out sumOfRotations);
-        pathSeedChoiceToWaypoints[PathSeedChoice.FigureEight] = VirtualPathGenerator.GenerateCirclePath(pathCircleRadius / 2, pathCircleWaypointNum, out sumOfDistances, out sumOfRotations, true);        
-
-        foreach (var ps in (PathSeedChoice[])System.Enum.GetValues(typeof(PathSeedChoice)))
-        {
-            if (pathSeedChoiceToWaypoints.ContainsKey(ps))
-            {
-                pathSeedChoiceToWaypoints[ps] = RandomRotateWaypoints(pathSeedChoiceToWaypoints[ps]);
-            }
-        }
+        RegeneratePathSeedWaypoints();
 
         firstPersonViewOldChoice = firstPersonView;
         virtualWorldVisibleOldChoice = virtualWorldVisible;
@@ -388,6 +431,32 @@ public class GlobalConfiguration : MonoBehaviour
     public List<Vector2> RandomRotateWaypoints(List<Vector2> waypoints) {
         var rot = Random.Range(0f, 360f);
         return RotateWaypoints(waypoints, rot);
+    }
+
+    private void SetRandomSeedAndRegeneratePaths(int seed)
+    {
+        randomSeed = seed;
+        InitRandomState();
+        RegeneratePathSeedWaypoints();
+    }
+
+    private void RegeneratePathSeedWaypoints()
+    {
+        // Pre-defined procedurally generated paths. Rebuild when seed changes so command-file seeds affect waypoints.
+        float sumOfDistances, sumOfRotations;
+        pathSeedChoiceToWaypoints = new Dictionary<PathSeedChoice, List<Vector2>>();
+        pathSeedChoiceToWaypoints[PathSeedChoice._90Turn] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeed90Turn(), generatedPathLength, out sumOfDistances, out sumOfRotations);
+        pathSeedChoiceToWaypoints[PathSeedChoice.RandomTurn] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeedRandomTurn(), generatedPathLength, out sumOfDistances, out sumOfRotations);
+        pathSeedChoiceToWaypoints[PathSeedChoice.StraightLine] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeedStraightLine(), generatedPathLength, out sumOfDistances, out sumOfRotations);
+        pathSeedChoiceToWaypoints[PathSeedChoice.Sawtooth] = VirtualPathGenerator.GenerateInitialPathByPathSeed(PathSeed.GetPathSeedSawtooth(), generatedPathLength, out sumOfDistances, out sumOfRotations);
+        pathSeedChoiceToWaypoints[PathSeedChoice.Circle] = VirtualPathGenerator.GenerateCirclePath(pathCircleRadius, pathCircleWaypointNum, out sumOfDistances, out sumOfRotations);
+        pathSeedChoiceToWaypoints[PathSeedChoice.FigureEight] = VirtualPathGenerator.GenerateCirclePath(pathCircleRadius / 2, pathCircleWaypointNum, out sumOfDistances, out sumOfRotations, true);
+
+        foreach (var ps in (PathSeedChoice[])System.Enum.GetValues(typeof(PathSeedChoice)))
+        {
+            if (pathSeedChoiceToWaypoints.ContainsKey(ps))
+                pathSeedChoiceToWaypoints[ps] = RandomRotateWaypoints(pathSeedChoiceToWaypoints[ps]);
+        }
     }
 
     // Start is called before the first frame update
@@ -608,6 +677,11 @@ public class GlobalConfiguration : MonoBehaviour
 
         UpdateSimulatedTime();        
         MakeOneStepMovement();
+        if (proactiveResetController != null)
+        {
+            ApplyProactiveResetSettings();
+            proactiveResetController.TickDecision();
+        }
         MakeOneStepRedirection();        
 
         for (var id = 0; id < redirectedAvatars.Count; id++)
@@ -689,7 +763,40 @@ public class GlobalConfiguration : MonoBehaviour
         InitRandomState();
     }
     public void InitRandomState() {
-        Random.InitState(VirtualPathGenerator.RANDOM_SEED);                
+        VirtualPathGenerator.RANDOM_SEED = randomSeed;
+        Random.InitState(randomSeed);                
+    }
+
+    private void EnsureProactiveResetController()
+    {
+        if (proactiveResetController == null)
+            proactiveResetController = GetComponent<MultiUserProactiveResetController>();
+        if (proactiveResetController == null)
+            proactiveResetController = gameObject.AddComponent<MultiUserProactiveResetController>();
+    }
+
+    private void ApplyProactiveResetSettings()
+    {
+        EnsureProactiveResetController();
+        proactiveResetController.strategy = proactiveResetStrategy;
+        proactiveResetController.decisionDt = proactiveDecisionDt;
+        proactiveResetController.thetaW = proactiveThetaW;
+        proactiveResetController.thetaG = proactiveThetaG;
+        proactiveResetController.proactiveResetCooldown = proactiveResetCooldown;
+        proactiveResetController.velocityHistorySeconds = proactiveVelocityHistorySeconds;
+        proactiveResetController.predictionHorizon = proactivePredictionHorizon;
+        proactiveResetController.predictionStep = proactivePredictionStep;
+        proactiveResetController.resetDurationForPrediction = proactiveResetDurationForPrediction;
+        proactiveResetController.userRadius = proactiveUserRadius;
+        proactiveResetController.safeBoundaryDistance = proactiveSafeBoundaryDistance;
+        proactiveResetController.emergencyBoundaryDistance = proactiveEmergencyBoundaryDistance;
+        proactiveResetController.safePairDistance = proactiveSafePairDistance;
+        proactiveResetController.severePairDistance = proactiveSeverePairDistance;
+        proactiveResetController.boundaryWeight = proactiveBoundaryWeight;
+        proactiveResetController.pairwiseWeight = proactivePairwiseWeight;
+        proactiveResetController.resetPressureWeight = proactiveResetPressureWeight;
+        proactiveResetController.requirePositiveCounterfactualBenefit = proactiveRequirePositiveCounterfactualBenefit;
+        proactiveResetController.interruptCostWeight = proactiveInterruptCostWeight;
     }
     //make one step redirection
     public void MakeOneStepRedirection()
@@ -726,23 +833,26 @@ public class GlobalConfiguration : MonoBehaviour
             redirectedAvatars.Add(newAvatar);
         }
 
-        GenerateTrackingSpace(redirectedAvatars.Count, out trackingSpacePoints, out obstaclePolygons, out List<InitialConfiguration> initialConfigurations);
-
-        var avatarList = new List<AvatarInfo>();
-        for (int i = 0; i < redirectedAvatars.Count; i++)
-        {
-            var ra = redirectedAvatars[i];
-            var mm = ra.GetComponent<MovementManager>();
-            mm.InitializeWaypointsPattern();
-            mm.initialConfiguration = initialConfigurations[i];
-            var avatarInfo = mm.GetCurrentAvatarInfo();
-            avatarList.Add(avatarInfo);            
-        }
         for (int i = 0; i < trialsForCurrentExperiment; i++)
         {
+            int setupRandomSeed = ExperimentSeedSequence.GetSeed(i, guaranteeExperimentReproducibility);
+            SetRandomSeedAndRegeneratePaths(setupRandomSeed);
+            GenerateTrackingSpace(redirectedAvatars.Count, out trackingSpacePoints, out obstaclePolygons, out List<InitialConfiguration> initialConfigurations);
+
+            var avatarList = new List<AvatarInfo>();
+            for (int avatarId = 0; avatarId < redirectedAvatars.Count; avatarId++)
+            {
+                var ra = redirectedAvatars[avatarId];
+                var mm = ra.GetComponent<MovementManager>();
+                mm.InitializeWaypointsPattern();
+                mm.initialConfiguration = initialConfigurations[avatarId];
+                var avatarInfo = mm.GetCurrentAvatarInfo();
+                avatarList.Add(avatarInfo);
+            }
+
             experimentSetups.Add(new ExperimentSetup(
                 avatarList, trackingSpaceChoice, trackingSpacePoints, squareWidth
-                , obstaclePolygons, obstacleType));
+                , obstaclePolygons, obstacleType, setupRandomSeed));
         }
         experimentSetupsList.Add(experimentSetups);
     }
@@ -777,6 +887,32 @@ public class GlobalConfiguration : MonoBehaviour
         }
     }
 
+    private MultiUserProactiveResetController.Strategy DecodeProactiveResetStrategy(string s)
+    {
+        switch (s.ToLower())
+        {
+            case "b0":
+            case "baseline":
+            case "passiveonly":
+            case "passive_only":
+                return MultiUserProactiveResetController.Strategy.PassiveOnly;
+            case "b2":
+            case "worseninghighestrisk":
+            case "worsening_highest_risk":
+            case "highestrisk":
+            case "highest_risk":
+                return MultiUserProactiveResetController.Strategy.WorseningHighestRisk;
+            case "b3":
+            case "worseningcounterfactual":
+            case "worsening_counterfactual":
+            case "counterfactual":
+                return MultiUserProactiveResetController.Strategy.WorseningCounterfactual;
+            default:
+                Debug.LogError("Proactive reset strategy invalid: " + s);
+                return MultiUserProactiveResetController.Strategy.PassiveOnly;
+        }
+    }
+
     //get TrackingSpaceChoice from txt
     private TrackingSpaceChoice DecodeTrackingSpaceChoice(string s)
     {
@@ -808,6 +944,8 @@ public class GlobalConfiguration : MonoBehaviour
         experimentSetups = new List<ExperimentSetup>();        
         AvatarInfo avatar = new AvatarInfo(typeof(NullRedirector), typeof(NullResetter), PathSeedChoice.StraightLine, null, null, null, null, null);
         var avatarList = new List<AvatarInfo>();
+        int setupRandomSeed = randomSeed;
+        int setupRepeatCount = 1;
         trackingSpaceChoice = TrackingSpaceChoice.Rectangle;
         obstacleType = 0;
         //if first avatar
@@ -887,6 +1025,86 @@ public class GlobalConfiguration : MonoBehaviour
                 case "reset_trigger_buffer":
                     RESET_TRIGGER_BUFFER = float.Parse(split[2]);
                     break;
+                case "randomseed":
+                case "seed":
+                    setupRandomSeed = int.Parse(split[2]);
+                    SetRandomSeedAndRegeneratePaths(setupRandomSeed);
+                    break;
+                case "runsimulationtime":
+                case "usesimulationtime":
+                    useSimulationTime = bool.Parse(split[2]);
+                    break;
+                case "runinbackstage":
+                    runInBackstage = bool.Parse(split[2]);
+                    break;
+                case "targetfps":
+                    targetFPS = float.Parse(split[2]);
+                    break;
+                case "guaranteeexperimentreproducibility":
+                case "reproducibleexperimentseeds":
+                    guaranteeExperimentReproducibility = bool.Parse(split[2]);
+                    break;
+                case "repeat":
+                case "trialsforrepeating":
+                    setupRepeatCount = Mathf.Max(1, int.Parse(split[2]));
+                    break;
+                case "proactiveresetstrategy":
+                    proactiveResetStrategy = DecodeProactiveResetStrategy(split[2]);
+                    break;
+                case "proactivedecisiondt":
+                    proactiveDecisionDt = float.Parse(split[2]);
+                    break;
+                case "proactivethetaw":
+                    proactiveThetaW = float.Parse(split[2]);
+                    break;
+                case "proactivethetag":
+                    proactiveThetaG = float.Parse(split[2]);
+                    break;
+                case "proactiveresetcooldown":
+                    proactiveResetCooldown = float.Parse(split[2]);
+                    break;
+                case "proactivevelocityhistoryseconds":
+                    proactiveVelocityHistorySeconds = float.Parse(split[2]);
+                    break;
+                case "proactivepredictionhorizon":
+                    proactivePredictionHorizon = float.Parse(split[2]);
+                    break;
+                case "proactivepredictionstep":
+                    proactivePredictionStep = float.Parse(split[2]);
+                    break;
+                case "proactiveresetdurationforprediction":
+                    proactiveResetDurationForPrediction = float.Parse(split[2]);
+                    break;
+                case "proactiveuserradius":
+                    proactiveUserRadius = float.Parse(split[2]);
+                    break;
+                case "proactivesafeboundarydistance":
+                    proactiveSafeBoundaryDistance = float.Parse(split[2]);
+                    break;
+                case "proactiveemergencyboundarydistance":
+                    proactiveEmergencyBoundaryDistance = float.Parse(split[2]);
+                    break;
+                case "proactivesafepairdistance":
+                    proactiveSafePairDistance = float.Parse(split[2]);
+                    break;
+                case "proactiveseverepairdistance":
+                    proactiveSeverePairDistance = float.Parse(split[2]);
+                    break;
+                case "proactiveboundaryweight":
+                    proactiveBoundaryWeight = float.Parse(split[2]);
+                    break;
+                case "proactivepairwiseweight":
+                    proactivePairwiseWeight = float.Parse(split[2]);
+                    break;
+                case "proactiveresetpressureweight":
+                    proactiveResetPressureWeight = float.Parse(split[2]);
+                    break;
+                case "proactiverequirepositivecounterfactualbenefit":
+                    proactiveRequirePositiveCounterfactualBenefit = bool.Parse(split[2]);
+                    break;
+                case "proactiveinterruptcostweight":
+                    proactiveInterruptCostWeight = float.Parse(split[2]);
+                    break;
                 //general parameters
                 case "end":
                     AddAvatarToAvatarListWhenDealingCommand(ref avatarList, ref avatar);
@@ -895,11 +1113,13 @@ public class GlobalConfiguration : MonoBehaviour
                     for (int i = 0; i < avatarList.Count; i++)
                         if (avatarList[i].initialConfiguration == null)
                             avatarList[i].initialConfiguration = initialConfigurations[i];
-                    experimentSetups.Add(new ExperimentSetup(avatarList, trackingSpaceChoice, trackingSpacePoints, squareWidth, obstaclePolygons, obstacleType));
+                    for (int repeatIndex = 0; repeatIndex < setupRepeatCount; repeatIndex++)
+                        experimentSetups.Add(new ExperimentSetup(avatarList, trackingSpaceChoice, trackingSpacePoints, squareWidth, obstaclePolygons, obstacleType, setupRandomSeed));
                     
                     //initialize for next trial setup
                     ifFirstAvatar = true;
                     avatarList = new List<AvatarInfo>();
+                    setupRepeatCount = 1;
                     break;
                 default:
                     Debug.LogError("Invalid command line: " + line);
@@ -1024,6 +1244,7 @@ public class GlobalConfiguration : MonoBehaviour
 
         //get current experimentSetup
         ExperimentSetup setup = experimentSetups[experimentIterator];
+        randomSeed = setup.randomSeed;
 
         trackingSpacePoints = setup.trackingSpacePoints;
         trackingSpaceChoice = setup.trackingSpaceChoice;
@@ -1061,6 +1282,13 @@ public class GlobalConfiguration : MonoBehaviour
         }
 
         Initialize();
+
+        if (proactiveResetController != null)
+        {
+            ApplyProactiveResetSettings();
+            proactiveResetController.ResetDecisionState();
+            proactiveResetController.BeginExperimentLogging(experimentIterator, setup);
+        }
 
         GenerateTrackingSpaceMeshForAllAvatarView(trackingSpacePoints, obstaclePolygons);
 
@@ -1267,6 +1495,8 @@ public class GlobalConfiguration : MonoBehaviour
 
         // Stop Logging
         statisticsLogger.EndLogging();
+        if (proactiveResetController != null)
+            proactiveResetController.EndExperimentLogging();
 
         // Gather Summary Statistics
         statisticsLogger.experimentResults.Add(statisticsLogger.GetExperimentResultForSummaryStatistics(endState,GetExperimentDescriptor(setup)));

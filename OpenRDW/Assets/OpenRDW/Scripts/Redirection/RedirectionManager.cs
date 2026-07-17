@@ -434,20 +434,36 @@ public class RedirectionManager : MonoBehaviour {
     }
 
     public void OnResetTrigger()
-    {            
+    {
+        OnResetTrigger("passive");
+    }
+
+    public void OnResetTrigger(string source)
+    {
         resetter.InitializeReset();
         inReset = true;
         
         //Debug.Log("OnResetTrigger");
         //record one reset operation
         globalConfiguration.statisticsLogger.Event_Reset_Triggered(movementManager.avatarId);
+        if (globalConfiguration.proactiveResetController != null)
+            globalConfiguration.proactiveResetController.LogResetEvent(globalConfiguration.GetTime(), movementManager.avatarId, source, true, "reset_triggered");
     }
 
     public void OnResetEnd()
-    {                
+    {
         resetter.EndReset();
         inReset = false;
         ifJustEndReset = true;
+    }
+
+    public bool RequestProactiveReset()
+    {
+        if (resetter == null || inReset || ifJustEndReset || movementManager.ifInvalid)
+            return false;
+
+        OnResetTrigger("proactive");
+        return true;
     }
 
     public void RemoveRedirector()
