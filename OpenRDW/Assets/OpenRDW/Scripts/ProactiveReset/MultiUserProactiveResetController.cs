@@ -125,31 +125,50 @@ public class MultiUserProactiveResetController : MonoBehaviour
             var passiveModel = BuildRiskModel();
             MultiUserRiskWorseningModel.RiskSnapshot passiveCurrent = passiveModel.EvaluateCurrent(passiveUsers);
             List<int> passiveEligibleUserIds = GetEligibleUserIds(passiveUsers, now);
+            MultiUserRiskWorseningModel.PredictionSnapshot passivePrediction = new MultiUserRiskWorseningModel.PredictionSnapshot
+            {
+                Worsening = float.NaN,
+                PeakRisk = float.NaN
+            };
+            string passiveReason = "passive_shadow_insufficient_velocity_history";
+
+            if (HasEnoughVelocityHistory(now))
+            {
+                passivePrediction = passiveModel.PredictWorsening(passiveUsers);
+                passiveReason = "passive_shadow_no_action";
+            }
 
             lastGroupRisk = passiveCurrent.GroupRisk;
-            lastWorsening = float.NaN;
-            lastPeakRisk = float.NaN;
+            lastWorsening = passivePrediction.Worsening;
+            lastPeakRisk = passivePrediction.PeakRisk;
             lastSelectedUserId = -1;
-            lastSelectionReason = "passive_only";
+            lastSelectionReason = passiveReason;
 
             logger.LogUserSamples(now, passiveUsers, passiveCurrent.IndividualRisks, passiveEligibleUserIds);
-            logger.LogDecision(now, strategy, passiveCurrent.GroupRisk, float.NaN, float.NaN, false, -1, lastSelectionReason, passiveEligibleUserIds, passiveCurrent.IndividualRisks);
-            return;
-        }
-
-        if (!HasEnoughVelocityHistory(now))
-        {
-            lastSelectionReason = "insufficient_velocity_history";
-            logger.LogDecision(now, strategy, float.NaN, float.NaN, float.NaN, false, -1, lastSelectionReason, null, null);
+            logger.LogPairSamples(now, passiveUsers, userRadius, severePairDistance, safePairDistance);
+            logger.LogDecision(now, strategy, passiveCurrent.GroupRisk, passivePrediction.Worsening, passivePrediction.PeakRisk, passiveCurrent.MinBoundaryDistance, passiveCurrent.MinPairwiseDistance, passiveCurrent.Emergency, passiveCurrent.MaxIndividualRiskUserId, passiveCurrent.MaxIndividualRisk, false, -1, lastSelectionReason, passiveEligibleUserIds, passiveCurrent.IndividualRisks);
             return;
         }
 
         List<MultiUserRiskWorseningModel.UserSnapshot> users = BuildUserSnapshots(now);
         var model = BuildRiskModel();
         MultiUserRiskWorseningModel.RiskSnapshot current = model.EvaluateCurrent(users);
-        MultiUserRiskWorseningModel.PredictionSnapshot prediction = model.PredictWorsening(users);
         List<int> eligibleUserIds = GetEligibleUserIds(users, now);
         logger.LogUserSamples(now, users, current.IndividualRisks, eligibleUserIds);
+        logger.LogPairSamples(now, users, userRadius, severePairDistance, safePairDistance);
+
+        if (!HasEnoughVelocityHistory(now))
+        {
+            lastGroupRisk = current.GroupRisk;
+            lastWorsening = float.NaN;
+            lastPeakRisk = float.NaN;
+            lastSelectedUserId = -1;
+            lastSelectionReason = "insufficient_velocity_history";
+            logger.LogDecision(now, strategy, current.GroupRisk, float.NaN, float.NaN, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            return;
+        }
+
+        MultiUserRiskWorseningModel.PredictionSnapshot prediction = model.PredictWorsening(users);
 
         lastGroupRisk = current.GroupRisk;
         lastWorsening = prediction.Worsening;
@@ -159,21 +178,21 @@ public class MultiUserProactiveResetController : MonoBehaviour
         if (current.Emergency)
         {
             lastSelectionReason = "emergency_active";
-            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
             return;
         }
 
         if (AnyUserResetting())
         {
             lastSelectionReason = "reset_active";
-            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
             return;
         }
 
         if (prediction.Worsening <= thetaW || prediction.PeakRisk <= thetaG)
         {
             lastSelectionReason = "no_trigger";
-            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, false, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
             return;
         }
 
@@ -181,7 +200,7 @@ public class MultiUserProactiveResetController : MonoBehaviour
         if (selectedUserId < 0)
         {
             lastSelectionReason = "no_eligible_user";
-            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, true, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, true, -1, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
             return;
         }
 
@@ -193,12 +212,12 @@ public class MultiUserProactiveResetController : MonoBehaviour
             lastSelectionReason = strategy == Strategy.WorseningHighestRisk
                 ? "highest_current_risk"
                 : "counterfactual_worsening_reduction";
-            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, true, selectedUserId, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, true, selectedUserId, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
         }
         else
         {
             lastSelectionReason = "reset_request_rejected";
-            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, true, selectedUserId, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
+            logger.LogDecision(now, strategy, current.GroupRisk, prediction.Worsening, prediction.PeakRisk, current.MinBoundaryDistance, current.MinPairwiseDistance, current.Emergency, current.MaxIndividualRiskUserId, current.MaxIndividualRisk, true, selectedUserId, lastSelectionReason, eligibleUserIds, current.IndividualRisks);
             logger.LogResetEvent(now, selectedUserId, "proactive", false, lastSelectionReason);
         }
     }

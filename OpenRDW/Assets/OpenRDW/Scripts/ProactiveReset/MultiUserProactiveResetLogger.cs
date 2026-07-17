@@ -32,13 +32,16 @@ public class MultiUserProactiveResetLogger
         WriteWaypointLog(setup);
         WriteHeaderIfMissing(
             GetDecisionPath(),
-            "decision_index;time;strategy;group_risk;w_h;g_peak;triggered;selected_user_id;selection_reason;eligible_users;individual_risks");
+            "decision_index;time;strategy;group_risk;w_h;g_peak;min_boundary_distance;min_pairwise_distance;emergency;max_individual_risk_user_id;max_individual_risk;triggered;selected_user_id;selection_reason;eligible_users;individual_risks");
         WriteHeaderIfMissing(
             GetResetEventPath(),
             "reset_index;time;user_id;source;accepted;reason");
         WriteHeaderIfMissing(
             GetUserSamplesPath(),
             "time;user_id;pos_x;pos_y;vel_x;vel_y;individual_risk;is_resetting;is_eligible");
+        WriteHeaderIfMissing(
+            GetPairSamplesPath(),
+            "time;user_a;user_b;pair_edge_distance;pair_center_distance;is_pair_severe;is_pair_risky");
     }
 
     public void EndTrial()
@@ -52,6 +55,11 @@ public class MultiUserProactiveResetLogger
         float groupRisk,
         float worsening,
         float peakRisk,
+        float minBoundaryDistance,
+        float minPairwiseDistance,
+        bool emergency,
+        int maxIndividualRiskUserId,
+        float maxIndividualRisk,
         bool triggered,
         int selectedUserId,
         string selectionReason,
@@ -68,6 +76,11 @@ public class MultiUserProactiveResetLogger
         line.Append(FloatToString(groupRisk)).Append(';');
         line.Append(FloatToString(worsening)).Append(';');
         line.Append(FloatToString(peakRisk)).Append(';');
+        line.Append(FloatToString(minBoundaryDistance)).Append(';');
+        line.Append(FloatToString(minPairwiseDistance)).Append(';');
+        line.Append(emergency ? "1" : "0").Append(';');
+        line.Append(maxIndividualRiskUserId).Append(';');
+        line.Append(FloatToString(maxIndividualRisk)).Append(';');
         line.Append(triggered ? "1" : "0").Append(';');
         line.Append(selectedUserId).Append(';');
         line.Append(Sanitize(selectionReason)).Append(';');
@@ -119,6 +132,36 @@ public class MultiUserProactiveResetLogger
         }
 
         File.AppendAllText(GetUserSamplesPath(), sb.ToString());
+    }
+
+    public void LogPairSamples(
+        float time,
+        IList<MultiUserRiskWorseningModel.UserSnapshot> users,
+        float userRadius,
+        float severePairDistance,
+        float safePairDistance)
+    {
+        if (!IsReady || users == null)
+            return;
+
+        var sb = new StringBuilder();
+        for (int i = 0; i < users.Count; i++)
+        {
+            for (int j = i + 1; j < users.Count; j++)
+            {
+                float centerDistance = (users[i].Position - users[j].Position).magnitude;
+                float edgeDistance = centerDistance - 2f * userRadius;
+                sb.Append(FloatToString(time)).Append(';');
+                sb.Append(users[i].UserId).Append(';');
+                sb.Append(users[j].UserId).Append(';');
+                sb.Append(FloatToString(edgeDistance)).Append(';');
+                sb.Append(FloatToString(centerDistance)).Append(';');
+                sb.Append(edgeDistance < severePairDistance ? "1" : "0").Append(';');
+                sb.Append(edgeDistance < safePairDistance ? "1" : "0").Append('\n');
+            }
+        }
+
+        File.AppendAllText(GetPairSamplesPath(), sb.ToString());
     }
 
     private void WriteMetadata(GlobalConfiguration globalConfiguration, int trialId, ExperimentSetup setup)
@@ -204,6 +247,11 @@ public class MultiUserProactiveResetLogger
     private string GetUserSamplesPath()
     {
         return Path.Combine(trialDirectory, "user_samples.csv");
+    }
+
+    private string GetPairSamplesPath()
+    {
+        return Path.Combine(trialDirectory, "pair_samples.csv");
     }
 
     private string GetResetEventPath()

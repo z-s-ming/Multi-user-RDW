@@ -43,6 +43,8 @@ OpenRDW/Experiment Results/
 # Local AI tool configuration
 OpenRDW/.agents/
 OpenRDW/.codex/
+OpenRDW/Assets/Plugins/NuGet/
+OpenRDW/Assets/Plugins/NuGet.meta
 
 # Backup plugin directory
 OpenRDW/Assets/Plugins/NuGet_backup/
