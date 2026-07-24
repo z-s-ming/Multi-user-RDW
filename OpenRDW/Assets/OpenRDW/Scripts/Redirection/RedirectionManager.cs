@@ -73,6 +73,36 @@ public class RedirectionManager : MonoBehaviour {
     public bool ifJustEndReset = false;//if just finishes reset, if true, execute redirection once then judge if reset, Prevent infinite loops
 
     [HideInInspector]
+    public bool redirectorExecuted = false;
+
+    [HideInInspector]
+    public bool redirectorExecutedInTrial = false;
+
+    [HideInInspector]
+    public bool boundaryEvent = false;
+
+    [HideInInspector]
+    public string resetEvent = "";
+
+    [HideInInspector]
+    public float requestedTranslationGain = float.NaN;
+
+    [HideInInspector]
+    public float appliedTranslationGain = 1.0f;
+
+    [HideInInspector]
+    public float requestedRotationGain = float.NaN;
+
+    [HideInInspector]
+    public float appliedRotationGain = 1.0f;
+
+    [HideInInspector]
+    public float requestedCurvatureGain = float.NaN;
+
+    [HideInInspector]
+    public float appliedCurvatureGain = 0.0f;
+
+    [HideInInspector]
     public float redirectionTime;//total time passed when using subtle redirection
 
     [HideInInspector]
@@ -247,6 +277,8 @@ public class RedirectionManager : MonoBehaviour {
     public void Initialize() {        
         samePosTime = 0;
         redirectionTime = 0;
+        ResetFrameGainState();
+        redirectorExecutedInTrial = false;
         UpdatePreviousUserState();
         UpdateCurrentUserState();
         inReset = false;
@@ -259,6 +291,7 @@ public class RedirectionManager : MonoBehaviour {
 
     //make one step redirection: redirect or reset
     public void MakeOneStepRedirection() {
+        ResetFrameGainState();
         UpdateCurrentUserState();
 
         //invalidData
@@ -282,6 +315,17 @@ public class RedirectionManager : MonoBehaviour {
         }        
 
         CalculateStateChanges();               
+
+        if (!globalConfiguration.RedirectionEnabled)
+        {
+            boundaryEvent = resetter != null && resetter.IsResetRequired();
+            if (boundaryEvent)
+                globalConfiguration.statisticsLogger.Event_Boundary_Triggered(movementManager.avatarId);
+
+            UpdatePreviousUserState();
+            UpdateBodyPose();
+            return;
+        }
         
         if (resetter != null && !inReset && resetter.IsResetRequired()&& !ifJustEndReset)
         {
@@ -300,6 +344,8 @@ public class RedirectionManager : MonoBehaviour {
         {                        
             if (redirector != null)
             {
+                redirectorExecuted = true;
+                redirectorExecutedInTrial = true;
                 redirector.InjectRedirection();
             }
             ifJustEndReset = false;
@@ -437,6 +483,7 @@ public class RedirectionManager : MonoBehaviour {
     {            
         resetter.InitializeReset();
         inReset = true;
+        resetEvent = resetter.GetType().Name;
         
         //Debug.Log("OnResetTrigger");
         //record one reset operation
@@ -486,5 +533,18 @@ public class RedirectionManager : MonoBehaviour {
     }
     public float GetDeltaTime() {
         return globalConfiguration.GetDeltaTime();
+    }
+
+    public void ResetFrameGainState()
+    {
+        redirectorExecuted = false;
+        boundaryEvent = false;
+        resetEvent = "";
+        requestedTranslationGain = float.NaN;
+        appliedTranslationGain = 1.0f;
+        requestedRotationGain = float.NaN;
+        appliedRotationGain = 1.0f;
+        requestedCurvatureGain = float.NaN;
+        appliedCurvatureGain = 0.0f;
     }
 }

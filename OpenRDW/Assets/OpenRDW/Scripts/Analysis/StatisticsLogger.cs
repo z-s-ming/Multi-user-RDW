@@ -241,6 +241,7 @@ public class StatisticsLogger : MonoBehaviour {
             //Debug.Log("BeginLogging");
             state = LoggingState.logging;
             InitializeAllValues();
+            BeginGainThresholdRuntimeLogging();
         }
     }
 
@@ -267,6 +268,7 @@ public class StatisticsLogger : MonoBehaviour {
         if (state == LoggingState.logging)
         {
             Event_Experiment_Ended();
+            EndGainThresholdRuntimeLogging();
             state = LoggingState.complete;
         }
     }
@@ -282,6 +284,26 @@ public class StatisticsLogger : MonoBehaviour {
             experimentResults.Add(er);
 
             var us = avatarStatistics[i];
+            var rm = globalConfiguration.redirectedAvatars[i].GetComponent<RedirectionManager>();
+
+            er["thresholdControlMode"] = globalConfiguration.thresholdControlMode.ToString();
+            er["configuredThresholdScale"] = globalConfiguration.LockedThresholdScale.ToString();
+            er["runtimeState"] = globalConfiguration.RuntimeState.ToString();
+            er["redirectionEnabled"] = globalConfiguration.RedirectionEnabled.ToString();
+            er["configuredRedirectorType"] = rm.redirectorType != null ? rm.redirectorType.Name : "None";
+            er["redirectorExecuted"] = rm.redirectorExecutedInTrial.ToString();
+            er["originalTranslationGainMin"] = (1.0f + globalConfiguration.ORIGINAL_MIN_TRANS_GAIN).ToString();
+            er["originalTranslationGainMax"] = (1.0f + globalConfiguration.ORIGINAL_MAX_TRANS_GAIN).ToString();
+            er["effectiveTranslationGainMin"] = (1.0f + globalConfiguration.MIN_TRANS_GAIN).ToString();
+            er["effectiveTranslationGainMax"] = (1.0f + globalConfiguration.MAX_TRANS_GAIN).ToString();
+            er["originalRotationGainMin"] = (1.0f + globalConfiguration.ORIGINAL_MIN_ROT_GAIN).ToString();
+            er["originalRotationGainMax"] = (1.0f + globalConfiguration.ORIGINAL_MAX_ROT_GAIN).ToString();
+            er["effectiveRotationGainMin"] = (1.0f + globalConfiguration.MIN_ROT_GAIN).ToString();
+            er["effectiveRotationGainMax"] = (1.0f + globalConfiguration.MAX_ROT_GAIN).ToString();
+            er["originalCurvatureParameter"] = globalConfiguration.ORIGINAL_CURVATURE_RADIUS.ToString();
+            er["effectiveCurvatureParameter"] = globalConfiguration.RedirectionEnabled ? globalConfiguration.CURVATURE_RADIUS.ToString() : "Infinity";
+            er["curvatureParameterType"] = "minimumCurvatureRadius";
+            er["curvatureUnit"] = "meters";
             
             er["reset_count"] = us.resetCount.ToString();
             er["virtual_way_distance"] = us.virtualWayDistance.ToString();
@@ -472,6 +494,14 @@ public class StatisticsLogger : MonoBehaviour {
         }
     }
 
+    public void Event_Boundary_Triggered(int userId)
+    {
+        if (state == LoggingState.logging)
+        {
+            // Boundary events are written into the per-frame gain-threshold CSV.
+        }
+    }
+
     public void Event_Update_PassiveHaptics_Results(int userId, float positionError, float angleError) {
         if (state == LoggingState.logging)
         {
@@ -496,6 +526,7 @@ public class StatisticsLogger : MonoBehaviour {
             us.userVirtualPositionSamplesBuffer.Add(Utilities.FlattenedPos2D(rm.currPos));
             us.distanceToNearestBoundarySamplesBuffer.Add(Utilities.GetNearestDistToObstacleAndTrackingSpace(globalConfiguration.obstaclePolygons, globalConfiguration.trackingSpacePoints, rm.currPosReal));
             us.distanceToCenterSamplesBuffer.Add(rm.currPosReal.magnitude);
+            LogGainThresholdRuntimeRow(i, rm);
         }
     }
 
@@ -648,6 +679,7 @@ public class StatisticsLogger : MonoBehaviour {
     const string XML_ELEMENT = "Experiment";
 
     StreamWriter csvWriter;
+    StreamWriter gainThresholdTimeseriesWriter;
 
     private Texture2D texRealPathGraph;//tex for simulation real path logging
     private Texture2D texVirtualPathGraph;//tex for simulation virtual path logging
@@ -688,6 +720,28 @@ public class StatisticsLogger : MonoBehaviour {
 
         obstacleColor = globalConfiguration.obstacleColor;
     }
+
+    void OnDisable()
+    {
+        CloseOpenLogWriters();
+    }
+
+    void OnApplicationQuit()
+    {
+        CloseOpenLogWriters();
+    }
+
+    void CloseOpenLogWriters()
+    {
+        EndGainThresholdRuntimeLogging();
+        if (csvWriter != null)
+        {
+            csvWriter.Flush();
+            csvWriter.Close();
+            csvWriter = null;
+        }
+    }
+
     public string Get_TMP_DERECTORY() {
         return TMP_DERECTORY;
     }
@@ -863,5 +917,139 @@ public class StatisticsLogger : MonoBehaviour {
     }
     public bool IfResetCountExceedLimit(int id) {
         return avatarStatistics[id].resetCount > MaxResetCount;
+    }
+
+    void BeginGainThresholdRuntimeLogging()
+    {
+        string trialLabel = string.Format("Trial{0:00}", globalConfiguration.experimentIterator);
+        string scaleLabel = globalConfiguration.LockedThresholdScale.ToString("0.###");
+        string stateLabel = globalConfiguration.RuntimeState.ToString();
+        string baseName = string.Format("{0}_Scale{1}_{2}", trialLabel, scaleLabel, stateLabel);
+        Utilities.CreateDirectoryIfNeeded(SAMPLED_METRICS_DIRECTORY);
+
+        File.WriteAllText(SAMPLED_METRICS_DIRECTORY + baseName + "_metadata.json", BuildGainThresholdMetadataJson());
+
+        gainThresholdTimeseriesWriter = new StreamWriter(SAMPLED_METRICS_DIRECTORY + baseName + "_timeseries.csv");
+        gainThresholdTimeseriesWriter.WriteLine("sessionId;trialId;timestamp;frameIndex;avatarId;thresholdScale;runtimeState;redirectionEnabled;configuredRedirectorType;redirectorExecuted;physicalPositionX;physicalPositionY;physicalPositionZ;physicalRotationYaw;virtualPositionX;virtualPositionY;virtualPositionZ;virtualRotationYaw;physicalTranslationDelta;physicalRotationDelta;requestedTranslationGain;appliedTranslationGain;requestedRotationGain;appliedRotationGain;requestedCurvatureGain;appliedCurvatureGain;accumulatedRedirectionTranslation;accumulatedRedirectionRotation;resetActive;resetEvent;boundaryEvent");
+    }
+
+    void EndGainThresholdRuntimeLogging()
+    {
+        if (gainThresholdTimeseriesWriter != null)
+        {
+            gainThresholdTimeseriesWriter.Flush();
+            gainThresholdTimeseriesWriter.Close();
+            gainThresholdTimeseriesWriter = null;
+        }
+    }
+
+    string BuildGainThresholdMetadataJson()
+    {
+        string redirectorType = "N/A";
+        string resetterType = "N/A";
+        string steeringMethod = "N/A";
+        if (globalConfiguration.redirectedAvatars.Count > 0)
+        {
+            var rm = globalConfiguration.redirectedAvatars[0].GetComponent<RedirectionManager>();
+            redirectorType = rm.redirectorType != null ? rm.redirectorType.Name : "None";
+            resetterType = rm.resetterType != null ? rm.resetterType.Name : "None";
+            steeringMethod = rm.redirector != null ? rm.redirector.GetType().Name : redirectorType;
+        }
+
+        Vector2 trackingSize = globalConfiguration.GetTrackingSpaceBoundingboxSize();
+        return "{\n"
+            + JsonLine("sessionId", globalConfiguration.startTimeOfProgram, true)
+            + JsonLine("trialId", globalConfiguration.experimentIterator.ToString(), true)
+            + JsonLine("experimentStartTime", globalConfiguration.startTimeOfProgram, true)
+            + JsonLine("thresholdControlMode", globalConfiguration.thresholdControlMode.ToString(), true)
+            + JsonLine("configuredThresholdScale", globalConfiguration.LockedThresholdScale.ToString(), true)
+            + JsonLine("runtimeState", globalConfiguration.RuntimeState.ToString(), true)
+            + JsonLine("redirectionEnabled", globalConfiguration.RedirectionEnabled.ToString(), true)
+            + JsonLine("redirectorType", redirectorType, true)
+            + JsonLine("resetterType", resetterType, true)
+            + JsonLine("steeringMethod", steeringMethod, true)
+            + JsonLine("sceneName", UnityEngine.SceneManagement.SceneManager.GetActiveScene().name, true)
+            + JsonLine("originalTranslationGainMin", (1.0f + globalConfiguration.ORIGINAL_MIN_TRANS_GAIN).ToString(), true)
+            + JsonLine("originalTranslationGainMax", (1.0f + globalConfiguration.ORIGINAL_MAX_TRANS_GAIN).ToString(), true)
+            + JsonLine("effectiveTranslationGainMin", (1.0f + globalConfiguration.MIN_TRANS_GAIN).ToString(), true)
+            + JsonLine("effectiveTranslationGainMax", (1.0f + globalConfiguration.MAX_TRANS_GAIN).ToString(), true)
+            + JsonLine("originalRotationGainMin", (1.0f + globalConfiguration.ORIGINAL_MIN_ROT_GAIN).ToString(), true)
+            + JsonLine("originalRotationGainMax", (1.0f + globalConfiguration.ORIGINAL_MAX_ROT_GAIN).ToString(), true)
+            + JsonLine("effectiveRotationGainMin", (1.0f + globalConfiguration.MIN_ROT_GAIN).ToString(), true)
+            + JsonLine("effectiveRotationGainMax", (1.0f + globalConfiguration.MAX_ROT_GAIN).ToString(), true)
+            + JsonLine("originalCurvatureParameter", globalConfiguration.ORIGINAL_CURVATURE_RADIUS.ToString(), true)
+            + JsonLine("effectiveCurvatureParameter", globalConfiguration.RedirectionEnabled ? globalConfiguration.CURVATURE_RADIUS.ToString() : "Infinity", true)
+            + JsonLine("curvatureParameterType", "minimumCurvatureRadius", true)
+            + JsonLine("curvatureUnit", "meters", true)
+            + JsonLine("physicalSpaceWidth", trackingSize.x.ToString(), true)
+            + JsonLine("physicalSpaceLength", trackingSize.y.ToString(), true)
+            + JsonLine("applicationVersion", Application.version, true)
+            + JsonLine("configurationVersion", "gain-threshold-scale-v1", true)
+            + JsonLine("randomSeed", VirtualPathGenerator.RANDOM_SEED.ToString(), false)
+            + "}\n";
+    }
+
+    string JsonLine(string key, string value, bool comma)
+    {
+        return string.Format("  \"{0}\": \"{1}\"{2}\n", key, value.Replace("\\", "\\\\").Replace("\"", "\\\""), comma ? "," : "");
+    }
+
+    void LogGainThresholdRuntimeRow(int avatarId, RedirectionManager rm)
+    {
+        if (gainThresholdTimeseriesWriter == null)
+            return;
+
+        float accumulatedTranslation = 0f;
+        float accumulatedRotation = 0f;
+        if (avatarId < avatarStatistics.Count)
+        {
+            accumulatedTranslation = avatarStatistics[avatarId].sumOfInjectedTranslation;
+            accumulatedRotation = avatarStatistics[avatarId].sumOfInjectedRotationFromRotationGain + avatarStatistics[avatarId].sumOfInjectedRotationFromCurvatureGain;
+        }
+
+        gainThresholdTimeseriesWriter.WriteLine(string.Join(";",
+            globalConfiguration.startTimeOfProgram,
+            globalConfiguration.experimentIterator,
+            globalConfiguration.GetTime(),
+            Time.frameCount,
+            avatarId,
+            globalConfiguration.LockedThresholdScale,
+            globalConfiguration.RuntimeState,
+            globalConfiguration.RedirectionEnabled,
+            rm.redirectorType != null ? rm.redirectorType.Name : "None",
+            rm.redirectorExecuted,
+            rm.currPosReal.x,
+            rm.currPosReal.y,
+            rm.currPosReal.z,
+            SafeYaw(rm.currDirReal),
+            rm.currPos.x,
+            rm.currPos.y,
+            rm.currPos.z,
+            SafeYaw(rm.currDir),
+            rm.deltaPos.magnitude,
+            rm.deltaDir,
+            FormatFloat(rm.requestedTranslationGain),
+            rm.appliedTranslationGain,
+            FormatFloat(rm.requestedRotationGain),
+            rm.appliedRotationGain,
+            FormatFloat(rm.requestedCurvatureGain),
+            rm.appliedCurvatureGain,
+            accumulatedTranslation,
+            accumulatedRotation,
+            rm.inReset,
+            rm.resetEvent,
+            rm.boundaryEvent));
+    }
+
+    float SafeYaw(Vector3 direction)
+    {
+        if (direction == Vector3.zero)
+            return 0f;
+        return Quaternion.LookRotation(direction, Vector3.up).eulerAngles.y;
+    }
+
+    string FormatFloat(float value)
+    {
+        return float.IsNaN(value) ? "NaN" : value.ToString();
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 using PathSeed = VirtualPathGenerator.PathSeed;
 using AvatarInfo = ExperimentSetup.AvatarInfo;
 using System.IO;
@@ -9,6 +10,7 @@ using System.IO;
 public class GlobalConfiguration : MonoBehaviour
 {
     public const float generatedPathLength = 400;//procedurally generated path length    
+    public const float GainThresholdScaleEpsilon = 1e-5f;
 
     private static readonly float pathCircleRadius = generatedPathLength / 2 / Mathf.PI;
     private static readonly int pathCircleWaypointNum = 20;
@@ -52,25 +54,60 @@ public class GlobalConfiguration : MonoBehaviour
 
     private bool firstPersonViewOldChoice;
 
-    [Tooltip("Translation gain (dilate)")]
-    [Range(0, 5)]
-    public float MAX_TRANS_GAIN = 0.26F;
+    [Header("Gain Thresholds")]
+    public GainThresholdControlMode thresholdControlMode = GainThresholdControlMode.Fixed;
 
-    [Tooltip("Translation gain (compress)")]
-    [Range(-0.99F, 0)]
-    public float MIN_TRANS_GAIN = -0.14F;
+    [Range(0f, 1f)]
+    public float fixedThresholdScale = 1.0f;
 
-    [Tooltip("Rotation gain (dilate)")]
-    [Range(0, 5)]
-    public float MAX_ROT_GAIN = 0.49F;
+    [Tooltip("Original translation gain (dilate), stored as the offset from 1.0")]
+    [FormerlySerializedAs("MAX_TRANS_GAIN")]
+    [SerializeField, Range(0, 5)]
+    private float originalMaxTransGain = 0.26F;
 
-    [Tooltip("Rotation gain (compress)")]
-    [Range(-0.99F, 0)]
-    public float MIN_ROT_GAIN = -0.2F;
+    [Tooltip("Original translation gain (compress), stored as the offset from 1.0")]
+    [FormerlySerializedAs("MIN_TRANS_GAIN")]
+    [SerializeField, Range(-0.99F, 0)]
+    private float originalMinTransGain = -0.14F;
 
-    [Tooltip("Radius applied by curvature gain")]
-    [Range(1, 23)]
-    public float CURVATURE_RADIUS = 7.5F;
+    [Tooltip("Original rotation gain (dilate), stored as the offset from 1.0")]
+    [FormerlySerializedAs("MAX_ROT_GAIN")]
+    [SerializeField, Range(0, 5)]
+    private float originalMaxRotGain = 0.49F;
+
+    [Tooltip("Original rotation gain (compress), stored as the offset from 1.0")]
+    [FormerlySerializedAs("MIN_ROT_GAIN")]
+    [SerializeField, Range(-0.99F, 0)]
+    private float originalMinRotGain = -0.2F;
+
+    [Tooltip("Original minimum curvature radius. Smaller radius means stronger allowed curvature gain.")]
+    [FormerlySerializedAs("CURVATURE_RADIUS")]
+    [SerializeField, Range(1, 23)]
+    private float originalCurvatureRadius = 7.5F;
+
+    private float lockedThresholdScale = 1.0f;
+    private RedirectionRuntimeState runtimeState = RedirectionRuntimeState.RedirectedWalking;
+    private float effectiveMaxTransGain = 0.26F;
+    private float effectiveMinTransGain = -0.14F;
+    private float effectiveMaxRotGain = 0.49F;
+    private float effectiveMinRotGain = -0.2F;
+    private float effectiveCurvatureRadius = 7.5F;
+    private bool dynamicModeWarningIssued;
+
+    public float MAX_TRANS_GAIN { get { return effectiveMaxTransGain; } set { originalMaxTransGain = value; RecalculateUnlockedGainThresholds(); } }
+    public float MIN_TRANS_GAIN { get { return effectiveMinTransGain; } set { originalMinTransGain = value; RecalculateUnlockedGainThresholds(); } }
+    public float MAX_ROT_GAIN { get { return effectiveMaxRotGain; } set { originalMaxRotGain = value; RecalculateUnlockedGainThresholds(); } }
+    public float MIN_ROT_GAIN { get { return effectiveMinRotGain; } set { originalMinRotGain = value; RecalculateUnlockedGainThresholds(); } }
+    public float CURVATURE_RADIUS { get { return effectiveCurvatureRadius; } set { originalCurvatureRadius = Mathf.Max(value, GainThresholdScaleEpsilon); RecalculateUnlockedGainThresholds(); } }
+
+    public float ORIGINAL_MAX_TRANS_GAIN { get { return originalMaxTransGain; } }
+    public float ORIGINAL_MIN_TRANS_GAIN { get { return originalMinTransGain; } }
+    public float ORIGINAL_MAX_ROT_GAIN { get { return originalMaxRotGain; } }
+    public float ORIGINAL_MIN_ROT_GAIN { get { return originalMinRotGain; } }
+    public float ORIGINAL_CURVATURE_RADIUS { get { return originalCurvatureRadius; } }
+    public float LockedThresholdScale { get { return lockedThresholdScale; } }
+    public RedirectionRuntimeState RuntimeState { get { return runtimeState; } }
+    public bool RedirectionEnabled { get { return runtimeState == RedirectionRuntimeState.RedirectedWalking; } }
 
     [Tooltip("Buffer width for triggering reset")]
     [SerializeField, Range(0f, 1f)]
@@ -372,6 +409,72 @@ public class GlobalConfiguration : MonoBehaviour
         {
             avatarNum = 1;            
         }
+
+        RecalculateUnlockedGainThresholds();
+    }
+
+    public IGainThresholdScaleProvider CreateThresholdScaleProvider()
+    {
+        if (thresholdControlMode == GainThresholdControlMode.Dynamic && !dynamicModeWarningIssued)
+        {
+            Debug.LogWarning("Dynamic gain threshold control is reserved for future dizziness-aware input. Falling back to fixedThresholdScale for this trial.");
+            dynamicModeWarningIssued = true;
+        }
+
+        if (thresholdControlMode == GainThresholdControlMode.Dynamic)
+            return new DynamicGainThresholdScaleProvider(fixedThresholdScale);
+
+        return new FixedGainThresholdScaleProvider(fixedThresholdScale);
+    }
+
+    public void LockGainThresholdConfigurationForTrial()
+    {
+        float scale = CreateThresholdScaleProvider().GetThresholdScale();
+        if (float.IsNaN(scale) || float.IsInfinity(scale))
+        {
+            Debug.LogError("Invalid threshold scale. NaN and Infinity are not allowed; falling back to 1.0.");
+            scale = 1.0f;
+        }
+
+        lockedThresholdScale = Mathf.Clamp01(scale);
+        runtimeState = lockedThresholdScale <= GainThresholdScaleEpsilon
+            ? RedirectionRuntimeState.NoRedirection
+            : RedirectionRuntimeState.RedirectedWalking;
+
+        UpdateEffectiveGainThresholds(lockedThresholdScale);
+    }
+
+    private void RecalculateUnlockedGainThresholds()
+    {
+        UpdateEffectiveGainThresholds(Mathf.Clamp01(fixedThresholdScale));
+    }
+
+    private void UpdateEffectiveGainThresholds(float thresholdScale)
+    {
+        effectiveMinTransGain = ScaleGainOffsetAroundOne(originalMinTransGain, thresholdScale);
+        effectiveMaxTransGain = ScaleGainOffsetAroundOne(originalMaxTransGain, thresholdScale);
+        effectiveMinRotGain = ScaleGainOffsetAroundOne(originalMinRotGain, thresholdScale);
+        effectiveMaxRotGain = ScaleGainOffsetAroundOne(originalMaxRotGain, thresholdScale);
+
+        if (thresholdScale <= GainThresholdScaleEpsilon)
+        {
+            effectiveMinTransGain = 0f;
+            effectiveMaxTransGain = 0f;
+            effectiveMinRotGain = 0f;
+            effectiveMaxRotGain = 0f;
+            effectiveCurvatureRadius = float.PositiveInfinity;
+        }
+        else
+        {
+            // CURVATURE_RADIUS is a minimum radius. Reducing allowed curvature by scale
+            // means increasing radius by 1 / scale because curvature is 1 / radius.
+            effectiveCurvatureRadius = originalCurvatureRadius / thresholdScale;
+        }
+    }
+
+    private float ScaleGainOffsetAroundOne(float originalGainOffset, float thresholdScale)
+    {
+        return thresholdScale * originalGainOffset;
     }
     public List<Vector2> RotateWaypoints(List<Vector2> waypoints,float angle)
     {
@@ -588,7 +691,7 @@ public class GlobalConfiguration : MonoBehaviour
         for (int i = 0; i < redirectedAvatars.Count; i++) {
             avatarIdSortedFromHighPriorityToLow.Add(i);
             var r = redirectedAvatars[i].GetComponent<RedirectionManager>().redirector;
-            if (r != null)
+            if (r != null && RedirectionEnabled)
                 r.GetPriority();
         }
         //large priority first
@@ -1021,6 +1124,7 @@ public class GlobalConfiguration : MonoBehaviour
     {        
         Debug.Log(string.Format("---------- EXPERIMENT STARTED ----------"));        
         Debug.Log(string.Format("trial:{0}/{1}, cmd file:{2}/{3}", experimentIterator + 1, experimentSetups.Count, experimentSetupsListIterator + 1, experimentSetupsList.Count));
+        LockGainThresholdConfigurationForTrial();
 
         //get current experimentSetup
         ExperimentSetup setup = experimentSetups[experimentIterator];

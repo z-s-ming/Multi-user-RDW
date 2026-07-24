@@ -35,7 +35,12 @@ public abstract class Redirector : MonoBehaviour
             transform.RotateAround(Utilities.FlattenedPos3D(redirectionManager.headTransform.position), Vector3.up, rotationInDegrees);
             GetComponentInChildren<KeyboardController>().SetLastRotation(rotationInDegrees);
             if (redirectionManager.deltaDir != 0)
-                redirectionManager.globalConfiguration.statisticsLogger.Event_Rotation_Gain(redirectionManager.movementManager.avatarId, rotationInDegrees / redirectionManager.deltaDir, rotationInDegrees);
+            {
+                float gain = rotationInDegrees / redirectionManager.deltaDir;
+                redirectionManager.requestedRotationGain = gain;
+                redirectionManager.appliedRotationGain = 1.0f + gain;
+                redirectionManager.globalConfiguration.statisticsLogger.Event_Rotation_Gain(redirectionManager.movementManager.avatarId, gain, rotationInDegrees);
+            }
         }
     }
 
@@ -52,7 +57,12 @@ public abstract class Redirector : MonoBehaviour
             
             GetComponentInChildren<KeyboardController>().SetLastCurvature(rotationInDegrees);
             if (redirectionManager.deltaPos.magnitude != 0)
-                redirectionManager.globalConfiguration.statisticsLogger.Event_Curvature_Gain(redirectionManager.movementManager.avatarId, rotationInDegrees / redirectionManager.deltaPos.magnitude, rotationInDegrees);
+            {
+                float gain = rotationInDegrees / redirectionManager.deltaPos.magnitude;
+                redirectionManager.requestedCurvatureGain = gain * Mathf.Deg2Rad;
+                redirectionManager.appliedCurvatureGain = gain * Mathf.Deg2Rad;
+                redirectionManager.globalConfiguration.statisticsLogger.Event_Curvature_Gain(redirectionManager.movementManager.avatarId, gain, rotationInDegrees);
+            }
         }
     }
     public bool Vector3IsNan(Vector3 v) {
@@ -69,7 +79,12 @@ public abstract class Redirector : MonoBehaviour
             transform.Translate(translation, Space.World);
             
             if (redirectionManager.deltaPos.magnitude != 0)
-                redirectionManager.globalConfiguration.statisticsLogger.Event_Translation_Gain(redirectionManager.movementManager.avatarId, Mathf.Sign(Vector3.Dot(translation, redirectionManager.deltaPos)) * translation.magnitude / redirectionManager.deltaPos.magnitude, Utilities.FlattenedPos2D(translation));
+            {
+                float gain = Mathf.Sign(Vector3.Dot(translation, redirectionManager.deltaPos)) * translation.magnitude / redirectionManager.deltaPos.magnitude;
+                redirectionManager.requestedTranslationGain = gain;
+                redirectionManager.appliedTranslationGain = 1.0f + gain;
+                redirectionManager.globalConfiguration.statisticsLogger.Event_Translation_Gain(redirectionManager.movementManager.avatarId, gain, Utilities.FlattenedPos2D(translation));
+            }
         }
     }
     public virtual void GetPriority()
