@@ -1,0 +1,13 @@
+{
+  "dataset_id": "2025_Cybersickness_dataset",
+  "source_url": "https://github.com/pvtryan1024/2025_Cybersickness_dataset",
+  "local_path": "shared/data/raw/pretraining/2025_Cybersickness_dataset",
+  "git_commit": "b828592",
+  "download_method": "git clone --depth 1",
+  "intended_use": "pretraining",
+  "notes": [
+    "The upstream repository contains both README.md and readme.md. On Windows case-insensitive filesystems, only one can exist in the working tree, so the nested dataset repository may report README.md as modified.",
+    "The dataset payload is stored under the upstream Dataset directory and consists of CSV files."
+  ]
+}
+

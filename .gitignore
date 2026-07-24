@@ -36,9 +36,17 @@ Desktop.ini
 *.log
 *.tmp
 *.bak
+__pycache__/
+*.py[cod]
 
 # Local experiment outputs
 OpenRDW/Experiment Results/
+
+# External pretraining dataset clone; keep provenance docs in shared/data/raw/pretraining.
+/shared/data/raw/pretraining/2025_Cybersickness_dataset/
+
+# Large generated prediction tables; keep summaries/reports in Git instead.
+/shared/data/exports/**/predictions*.csv
 
 # Local AI tool configuration
 OpenRDW/.agents/

@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openrdw.local/schemas/model-manifest.schema.json",
+  "title": "OpenRDW Model Manifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "model_id",
+    "runtime",
+    "artifact",
+    "inputs",
+    "outputs"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime": {
+      "type": "string",
+      "enum": [
+        "onnx",
+        "pytorch",
+        "tensorflow"
+      ]
+    },
+    "artifact": {
+      "type": "string",
+      "description": "Path relative to shared/models."
+    },
+    "episode_schema": {
+      "type": "string",
+      "default": "episode.schema.json"
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tensor"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tensor"
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "tensor": {
+      "type": "object",
+      "required": [
+        "name",
+        "dtype",
+        "shape"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "dtype": {
+          "type": "string"
+        },
+        "shape": {
+          "type": "array",
+          "items": {
+            "type": [
+              "integer",
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+

@@ -1,0 +1,12 @@
+item,value,note
+public_snapshot_session_count,428,Stage 1-4 all use frozen public snapshot
+raw_pa_id_groups,86,Conservative identifier grouping; not confirmed participants
+split_name,raw_pa_id-group-disjoint split,Do not call confirmed participant-disjoint
+split_10s_sha256,ce6de3c1cc9beb6c94acee6227213a50b43ecb338ab1fc6f48a3942adfa91cd5,Frozen Baseline v1 split
+split_30s_sha256,e8db5f68f0f21d9ac01c53391383ef44dec0cabbbdc28e5fcbfe23e4e120cd73,Frozen Baseline v1 split
+split_60s_sha256,a0b3eeab3f779bc6e2996b66278052c7771cdd07acf9096085ea383578421005,Frozen Baseline v1 split
+primary_target,current terminal FMS,Future FMS deltas are supervision-only targets in Stage 4
+primary_selection_metric,session-macro MAE,"Secondary: raw_pa_id-group macro, RMSE, R2, Pearson, bias/slices"
+forbidden_inputs,"FMS history, raw_pa_id, session ID, condition, filename, future frames",Static susceptibility features allowed only in Stage 4/5 final candidate
+missing_threshold,exclude dynamic missing fraction > 20% windows,Missing values handled causally
+smape_note,computed but not primary,sMAPE unstable when FMS is near 0

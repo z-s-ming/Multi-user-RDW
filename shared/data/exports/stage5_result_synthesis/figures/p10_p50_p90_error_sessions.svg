@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="260" viewBox="0 0 1200 260">
+<rect width="100%" height="100%" fill="white"/>
+<text x="30" y="30" font-size="20" font-family="Arial">第10、50、90百分位误差 session 的OOF预测曲线索引</text>
+<rect x="30" y="55" width="360" height="160" fill="#f8f8f8" stroke="#333"/>
+<text x="45" y="85" font-size="16" font-family="Arial">p10_error</text>
+<text x="45" y="115" font-size="12" font-family="Arial">session: PA39_Reverse_Optical_Flow_Low_Density_5_03_01_PM</text>
+<text x="45" y="140" font-size="12" font-family="Arial">MAE=1.523; RMSE=2.047; bias=1.161</text>
+<text x="45" y="165" font-size="12" font-family="Arial">完整曲线: figures/p10_error_final_model.svg</text>
+<text x="45" y="190" font-size="12" font-family="Arial">纵轴固定0-20，橙线为FMS update事件。</text>
+<rect x="420" y="55" width="360" height="160" fill="#f8f8f8" stroke="#333"/>
+<text x="435" y="85" font-size="16" font-family="Arial">p50_error</text>
+<text x="435" y="115" font-size="12" font-family="Arial">session: PA12_Reverse_Optical_Flow_Foward_Texture_7_06_02_PM</text>
+<text x="435" y="140" font-size="12" font-family="Arial">MAE=3.009; RMSE=3.415; bias=2.976</text>
+<text x="435" y="165" font-size="12" font-family="Arial">完整曲线: figures/p50_error_final_model.svg</text>
+<text x="435" y="190" font-size="12" font-family="Arial">纵轴固定0-20，橙线为FMS update事件。</text>
+<rect x="810" y="55" width="360" height="160" fill="#f8f8f8" stroke="#333"/>
+<text x="825" y="85" font-size="16" font-family="Arial">p90_error</text>
+<text x="825" y="115" font-size="12" font-family="Arial">session: PA7_Base_1_07_38_PM</text>
+<text x="825" y="140" font-size="12" font-family="Arial">MAE=6.437; RMSE=7.152; bias=-6.349</text>
+<text x="825" y="165" font-size="12" font-family="Arial">完整曲线: figures/p90_error_final_model.svg</text>
+<text x="825" y="190" font-size="12" font-family="Arial">纵轴固定0-20，橙线为FMS update事件。</text>
+</svg>

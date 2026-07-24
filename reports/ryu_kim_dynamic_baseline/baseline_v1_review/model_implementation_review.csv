@@ -1,0 +1,3 @@
+model,implementation,training_path,feature_count,parameter_count,trainable_parameters,input_tensor_or_feature_shape,structure
+ridge_window_stats,RidgeRegressor over fast_matrix_features_window_stats,"prepare_design(..., model_name='ridge_window_stats') -> RidgeRegressor.fit",36,37,37,"[batch, 36] summary vector; no raw temporal tensor",linear ridge regression with bias over per-channel mean/std/min/max/first/last
+causal_tcn_linear,RidgeRegressor over fast_matrix_features_causal_tcn_linear,"prepare_design(..., model_name='causal_tcn_linear') -> RidgeRegressor.fit",96,97,97,"[batch, 96] lag+summary vector; no nonlinear layers",linear ridge regression with bias over 60 causal lag features plus same 36 summary features

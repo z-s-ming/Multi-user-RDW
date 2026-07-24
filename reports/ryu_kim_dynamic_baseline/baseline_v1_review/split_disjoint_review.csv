@@ -1,0 +1,16 @@
+duration_seconds,fold,train_raw_pa_id_count,validation_raw_pa_id_count,test_raw_pa_id_count,train_test_raw_pa_id_overlap,train_test_session_overlap,validation_note
+10,0,69,0,17,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+10,1,68,0,18,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+10,2,69,0,17,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+10,3,68,0,18,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+10,4,70,0,16,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+30,0,68,0,18,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+30,1,68,0,18,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+30,2,69,0,17,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+30,3,69,0,17,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+30,4,70,0,16,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+60,0,69,0,17,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+60,1,68,0,18,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+60,2,69,0,17,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+60,3,68,0,18,0,0,not_used_in_baseline_v1_fixed_5fold_cv
+60,4,70,0,16,0,0,not_used_in_baseline_v1_fixed_5fold_cv

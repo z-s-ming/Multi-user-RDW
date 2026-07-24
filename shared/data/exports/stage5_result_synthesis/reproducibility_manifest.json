@@ -1,0 +1,41 @@
+{
+  "source_stages": [
+    "stage1",
+    "stage2",
+    "stage3",
+    "stage4"
+  ],
+  "split_hashes": {
+    "10": "ce6de3c1cc9beb6c94acee6227213a50b43ecb338ab1fc6f48a3942adfa91cd5",
+    "30": "e8db5f68f0f21d9ac01c53391383ef44dec0cabbbdc28e5fcbfe23e4e120cd73",
+    "60": "a0b3eeab3f779bc6e2996b66278052c7771cdd07acf9096085ea383578421005"
+  },
+  "experiment_count": 34,
+  "generated_tables": [
+    "tables\\table_all_unified_metrics.csv",
+    "tables\\table_dataset_protocol.csv",
+    "tables\\table_feature_ablation.csv",
+    "tables\\table_final_model_metrics.csv",
+    "tables\\table_fold_metrics.csv",
+    "tables\\table_history_ablation.csv",
+    "tables\\table_history_common_anchor.csv",
+    "tables\\table_loss_task_ablation.csv",
+    "tables\\table_missingness_ablation.csv",
+    "tables\\table_model_comparison.csv",
+    "tables\\table_resource_metrics.csv",
+    "tables\\table_slice_metrics.csv"
+  ],
+  "generated_figures": [
+    "figures\\median_error_full_timeline_final_model.svg",
+    "figures\\median_session_model_comparison.svg",
+    "figures\\p10_error_final_model.svg",
+    "figures\\p10_p50_p90_error_sessions.svg",
+    "figures\\p50_error_final_model.svg",
+    "figures\\p90_error_final_model.svg"
+  ],
+  "metric_notes": {
+    "smape": "已计算但FMS接近0时不稳定，不作为主要选型依据。",
+    "dtw": "session macro使用半径20的带状归一化DTW，避免长序列二次复杂度爆炸。"
+  },
+  "resource_metric_note": "Stage 4 training scripts did not record peak GPU memory; those cells are intentionally blank."
+}

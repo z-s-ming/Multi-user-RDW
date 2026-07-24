@@ -1,0 +1,2 @@
+duration_seconds,variant,window_mae_mean,window_mae_std,window_rmse_mean,window_rmse_std,window_bias_mean,window_bias_std,session_macro_mae_mean,session_macro_mae_std,raw_pa_id_group_macro_mae_mean,raw_pa_id_group_macro_mae_std,folds,window_count_mean,parameter_count
+,dynamic,3.9258393849595654,0.3887891894648459,4.937419220134626,0.5516284236102179,-0.7889226974675748,1.0454320114827818,3.9281021801915825,0.3890511277443139,4.397773599303354,0.3950160800308247,5,31962.52,5921

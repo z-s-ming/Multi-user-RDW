@@ -1,0 +1,66 @@
+experiment:
+  name: ryu_kim_dynamic_baseline
+  scope: public_snapshot_internal_causal_fms_prediction
+  split_name: raw_pa_id-group-disjoint split
+  confirmed_participant_split: false
+  random_seed: 42
+  n_folds: 5
+  no_hyperparameter_search: true
+
+paths:
+  raw_data_dir: shared/data/raw/pretraining/2025_Cybersickness_dataset/Dataset
+  output_dir: reports/ryu_kim_dynamic_baseline
+
+features:
+  dynamic:
+    - acceleration_x
+    - acceleration_y
+    - acceleration_z
+    - angular_velocity_x
+    - angular_velocity_y
+    - angular_velocity_z
+  forbidden_inputs:
+    - fms_history
+    - age
+    - gender
+    - mssq
+    - participant_id
+    - raw_pa_id
+    - session_id
+    - condition
+    - source_file
+    - future_frames
+  missing_masks_generated: true
+  masks_used_as_model_inputs: false
+
+windowing:
+  durations_seconds: [10, 30, 60]
+  sample_interval_seconds: 0.5
+  stride_steps: 1
+  label: terminal_current_fms
+  do_not_cross_session: true
+  maximum_dynamic_missing_fraction: 0.20
+
+preprocessing:
+  standardizer_fit_scope: training_fold_only
+  missing_numeric_policy: standardize_observed_then_fill_missing_zero
+  interpolation: none
+
+models:
+  mean_fms:
+    enabled: true
+  ridge_window_stats:
+    enabled: true
+    alpha: 1.0
+  causal_tcn_linear:
+    enabled: true
+    alpha: 1.0
+    dilations: [1, 2, 4, 8, 16]
+    taps_per_dilation: 2
+
+balance_checks:
+  stop_on_severe_imbalance: true
+  minimum_test_session_fraction_of_mean: 0.25
+  maximum_test_session_fraction_of_mean: 4.0
+  require_nonempty_major_fms_bins: true
+  major_fms_bin_min_global_fraction: 0.05

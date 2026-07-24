@@ -1,0 +1,37 @@
+experiment:
+  name: ryu_kim_lstm_10s
+  scope: baseline_v1_fixed_split_sequence_model
+  window_seconds: 10
+  split_source: reports/ryu_kim_dynamic_baseline/baseline_v1_review/frozen_splits/splits_10s.json
+  static_personalization: false
+  cross_dataset_transfer: false
+  hyperparameter_search: false
+
+data:
+  raw_data_dir: shared/data/raw/pretraining/2025_Cybersickness_dataset/Dataset
+  dynamic_features:
+    - acceleration_x
+    - acceleration_y
+    - acceleration_z
+    - angular_velocity_x
+    - angular_velocity_y
+    - angular_velocity_z
+  input_channels: 12
+  include_missing_mask: true
+  max_dynamic_missing_fraction: 0.20
+  forbidden_inputs: [fms_history, age, gender, mssq, raw_pa_id, session_id, condition, filename, future_frames]
+
+model:
+  type: lstm
+  hidden_size: 32
+  num_layers: 1
+  bidirectional: false
+  dropout: 0.0
+
+training:
+  epochs: 8
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 0.0
+  seed: 42
+  folds: 5

@@ -1,0 +1,54 @@
+{
+  "created_at_utc": "2026-07-21T08:10:50.403912+00:00",
+  "GATE_A_DYNAMIC_BASELINE": {
+    "status": "blocked",
+    "requires": [
+      "trusted split unit",
+      "no duplicate-session leakage",
+      "explicit missing-data handling"
+    ],
+    "blockers": [
+      "Trusted split unit is unresolved because PAxx is not a confirmed globally unique participant ID."
+    ]
+  },
+  "GATE_B_STATIC_PERSONALIZATION": {
+    "status": "blocked",
+    "requires": [
+      "trusted participant identity",
+      "trusted static feature linkage"
+    ],
+    "blockers": [
+      "Participant identity is unresolved; static personalization cannot treat candidates as confirmed people."
+    ]
+  },
+  "GATE_C_CROSS_DATASET_TRANSFER": {
+    "status": "blocked",
+    "requires": [
+      "units",
+      "coordinate frame",
+      "feature computation method"
+    ],
+    "blockers": [
+      "Acceleration unit unresolved.",
+      "Angular velocity unit unresolved.",
+      "Coordinate frame unresolved.",
+      "Feature computation provenance unresolved."
+    ]
+  },
+  "GATE_D_REALTIME_DEPLOYMENT": {
+    "status": "blocked",
+    "requires": [
+      "units",
+      "coordinate frame",
+      "online feature computation",
+      "runtime missing-data policy"
+    ],
+    "blockers": [
+      "Acceleration unit unresolved.",
+      "Angular velocity unit unresolved.",
+      "Coordinate frame unresolved.",
+      "Feature computation provenance unresolved.",
+      "Runtime missing-data behavior is not defined."
+    ]
+  }
+}

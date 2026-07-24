@@ -1,0 +1,25 @@
+{
+  "session_count": 428,
+  "event_count": 15056,
+  "up_count": 9268,
+  "down_count": 5788,
+  "high_fms_event_count": 2714,
+  "stair_duration_seconds": {
+    "count": 15056,
+    "mean": 6.208714058906729,
+    "std": 12.367578000507567,
+    "p25": 0.5129000000000019,
+    "median": 1.0529649999999968,
+    "p75": 6.2495875000000005,
+    "max": 166.0365893
+  },
+  "update_abs_magnitude": {
+    "count": 15056,
+    "mean": 1.331163655685441,
+    "std": 0.7130616095637896,
+    "p25": 1.0,
+    "median": 1.0,
+    "p75": 1.0,
+    "max": 11.0
+  }
+}

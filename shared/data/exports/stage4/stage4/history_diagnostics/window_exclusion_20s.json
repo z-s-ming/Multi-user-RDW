@@ -1,0 +1,8 @@
+{
+  "candidate_windows": 187561,
+  "effective_windows": 184343,
+  "excluded_windows_missing_fraction_gt_threshold": 3218,
+  "excluded_sessions": 57,
+  "excluded_raw_pa_id_groups": 56,
+  "window_length_steps": 40
+}

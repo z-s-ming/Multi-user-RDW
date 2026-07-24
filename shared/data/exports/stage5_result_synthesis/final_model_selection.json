@@ -1,0 +1,8 @@
+{
+  "predefined_candidate": "stage4_static_static_dynamic",
+  "unified_best_by_rule": "stage4_static_static_dynamic",
+  "selected_final_experiment_id": "stage4_static_static_dynamic",
+  "selection_rule": "主指标session-macro MAE；次级raw_pa_id-group macro、RMSE、R2、Pearson；性能接近时优先短窗口、少参数、低延迟、简单处理。",
+  "selected_model_name": "10秒单向LSTM + dynamic + session-recorded static susceptibility features + zero/missing mask + Huber current-FMS regression",
+  "not_confirmed_participant_personalized": true
+}

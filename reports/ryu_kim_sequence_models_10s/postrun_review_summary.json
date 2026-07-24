@@ -1,0 +1,34 @@
+{
+  "ridge_10s_window_mae_mean": 3.8585588590484527,
+  "ridge_10s_session_macro_mae_mean": 3.8684930423761985,
+  "models": {
+    "causal_tcn": {
+      "window_mae_mean": 3.7474085511997144,
+      "window_mae_std": 0.2821224720346272,
+      "session_macro_mae_mean": 3.755849376283873,
+      "session_macro_mae_std": 0.2840649256717012,
+      "raw_pa_id_group_macro_mae_mean": 4.26072605937791,
+      "raw_pa_id_group_macro_mae_std": 0.34258217739909563,
+      "session_macro_mae_improvement_vs_ridge_percent": 2.9118228948173286,
+      "paired_mean_abs_error_difference_vs_ridge_mean": -0.11115030784872344,
+      "parameter_count": 17153,
+      "peak_gpu_memory_mb_mean": 205.33681640625,
+      "train_time_seconds_sum": 174.30154231190681,
+      "latency_ms_per_window_mean": 0.004987871146492036
+    },
+    "lstm": {
+      "window_mae_mean": 3.7339339841262373,
+      "window_mae_std": 0.25986879396457974,
+      "session_macro_mae_mean": 3.7440681033733947,
+      "session_macro_mae_std": 0.2654240172388122,
+      "raw_pa_id_group_macro_mae_mean": 4.277725774486212,
+      "raw_pa_id_group_macro_mae_std": 0.28829545838492193,
+      "session_macro_mae_improvement_vs_ridge_percent": 3.216367139344176,
+      "paired_mean_abs_error_difference_vs_ridge_mean": -0.12462487492220027,
+      "parameter_count": 5921,
+      "peak_gpu_memory_mb_mean": 222.1078125,
+      "train_time_seconds_sum": 103.3095393255353,
+      "latency_ms_per_window_mean": 0.0019414894165366008
+    }
+  }
+}

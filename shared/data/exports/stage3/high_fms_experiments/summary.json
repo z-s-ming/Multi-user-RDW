@@ -1,0 +1,11 @@
+{
+  "window_exclusion": {
+    "candidate_windows": 196121,
+    "effective_windows": 192219,
+    "excluded_windows_missing_fraction_gt_threshold": 3902,
+    "excluded_sessions": 57,
+    "excluded_raw_pa_id_groups": 56,
+    "window_length_steps": 20
+  },
+  "experiment": "high_fms"
+}

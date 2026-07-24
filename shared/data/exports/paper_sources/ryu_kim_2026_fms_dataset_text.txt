@@ -1,0 +1,774 @@
+
+
+--- PAGE 1 ---
+3346 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 32, NO. 5, MAY 2026
+Predicting Cybersickness Trend and Extent
+based on FMS labeled Dataset
+JunRyu ,GerardJ.Kim
+Fig. 1: A temporally dense dataset (over 179,340 points of cybersickness data) is developed. The FMS score was marked every 0.5
+seconds and adjusted/updated on-demand, and the dataset is publicly available. Predicting cybersickness with the dataset shows the
+possibility of predicting cybersickness with only virtual motion profiles, which are comparatively easier to obtain.
+Abstract— Cybersickness has been a hindrance to the widespread adoption of virtual reality. As cybersickness is dynamic, with its
+manifestation changing constantly, predicting and mitigating it in real time is key. However, previous research has utilized predictive
+models trained mostly with datasets whose sickness levels were measured and labeled only after experiencing the content. In addition,
+many datasets rely on physiological signals as input, which makes them difficult to apply in actual VR usage. This makes such timely
+predictions unreliable or practically infeasible. We have created a publicly available dataset where the ground truth sickness levels were
+densely marked every 0.5 seconds and adjusted/updated on-demand using the FMS, and purposely excluded the difficult-to-collect
+physiological data. We demonstrate that predictive models trained with such a dataset, comprising just the content motion profile and
+FMS data, can still produce comparably reliable sickness prediction, and more so, when user-specific parameters (e.g., age, gender)
+are added. The created dataset is available at https://github.com/pvtryan1024/2025_Cybersickness_dataset.
+Index Terms—Cybersickness, Datasets, Virtual reality, User studies, Real-time sickness prediction
+1 INTRODUCTION
+Cybersickness,whichhasbeenreportedtooccurinmorethan60%of adefinitivecauseofvisuallyinducedmotionsickness(VIMS)[20],it
+VRusers,hasbeenapersistentproblemsinceitswideradoption[40]. islikelytoshowhighcorrelationwithcybersickness.Assuch,adataset
+Althoughmultipletheorieshavebeenproposedasthemaincauseof ofusers’virtualmotionassociatedwiththelevelofcybersicknesscould
+cybersickness,themostprevalenthypothesesarethesensorymismatch beusefulinstudyingthenatureofcybersicknessandevenpredictingit.
+[32],posturalinstability[2],andrestframetheories[8].Inonewayor Infact,severalpreviousstudieshavecollectedandusedMultimodal
+another,thevirtual(orvisual)motionseemstobeanimportantfactor Time-seriesSensorData[13]inhopesoffindingacorrelationwitha
+inallthesetheories.Forexample,sensorymismatchemanatesfromthe predictivemodelofcybersickness. Thesedatasetstypicallycapture,
+discrepancybetweenvisualandvestibularmotioninformation.There in addition to the virtual motion profile, various types of data such
+havealsobeenreportsofpatientswithvestibularmigraineshowing asphysiologicalsignals[43](e.g.,heartrate,gaze). Predictivemod-
+posturalinstabilityoftheheadandneckwhenvisualstimuliweregiven elsbasedcollectivelyonsuchdatacanbedifficulttodeployinreal
+intheirperipheralview[28]. usagesituations,duringwhichphysiologicalinputdataispractically
+Whiletheinducedperceptionofself-motion(vection)mightnotbe difficulttoacquire.Furthermore,ithasnotbeenclearlyestablishedif
+orhowmuchthevariousphysiologicalsignalsactuallycorrelatewith
+cybersickness[9,13].
+• JunRyuandGerardJ.KimarewithKoreaUniversity.E-mail: Themostseriousproblemseemstobethatthedatasetstothisenduse
+{rjstarwars gjkim}@korea.ac.kr groundtruthcybersicknesslevelsmeasuredandlabeledafterexperienc-
+|
+ingthecontent,mostcommonlytheSimulationSicknessQuestionnaire
+Received 12 September 2025; revised 16 January 2026; accepted 23 January 2026.
+score[16]. However,cybersicknessisdynamicbynatureandiscon-
+Date of publication 31 March 2026; date of current version 12 May 2026.
+stantlyaffectedbyvariousfactors,momentbymoment. Thismakes
+Digital Object Identifier no. 10.1109/TVCG.2026.3679094
+suchanalysisandpredictionsunreliable,asweareunabletoconsider
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+1077-2626 © 2026 IEEE. All rights reserved, including rights for text and data mining, and training of artificial intelligence and similar technologies.
+Personal use is permitted, but republication/redistribution requires IEEE permission. See https://www.ieee.org/publications/rights/index.html for more information.
+
+
+--- PAGE 2 ---
+ryu AND KIM: PreDIctINg cybersIcKNess treND AND exteNt bAseD oN FMs lAbeleD DAtAset 3347
+variousfactorsthatappearanddisappearatdifferenttimes. modelthatconsideredthevisualflowandsubjectiveverticalaxisto
+Inthispaper,wehavecreatedapubliclyavailabledatasetcontaining explaincybersickness.Theperceptionoftheverticalaxisviavisionor
+the user’s (or content) virtual motion profile (e.g., angular velocity, fromtheotolithswithinthevestibularorganhaseffectsontheseverity
+acceleration) in which the ground truth sickness level was densely ofcybersickness.
+markedevery0.5seconds,andupdated/adjustedondemandusingthe Althoughtheeffectsofvisualmotionstimulusanditseffectson
+FMS[35],usingadedicated,easy-to-usedialbasedinputdevice[30]. cybersickness are inconclusive [19,20], it does seem to have some
+Inadditiontomakingthedatasettemporallydense,theresolutionof correlationwhenitcomestotheaxisofrotation.Ujikeetal.[38]have
+0.5secondsreflectsaconservativeestimateofhowfastahumanuser testedallthreeaxesofrotationwithascaleofseverityofcybersickness
+canupdatetheFMSvalueusingthedial.Inaddition,wepurposelydo from0to10.Theexperimentresultsshowedthattherotationaround
+notuseorcollectanyphysiological(orothertypeof)data(tobeused therollaxisincurredthehighestsicknessscore,followedbypitchand
+asinputtothepredictionmodel)thataredifficulttocollectinausual yaw.
+VRsetup. However,morerecentexperimentsbyKeshavarzetal.[19]have
+Wedemonstratethatusingsuchadatasetandtrainingaprediction foundthatwhiletherewasnotahugedifferenceamongtherotational
+modelwithitcanproduce“timely”sicknesspredictionperformance axes,thepitchrotationshowedgenerallyhigherFastmotionsickness
+comparabletothosethatuse,forexample,physiologicaldata.Notethat scaleandSSQscores.Notethatrotationusuallyoccursaroundmultiple
+modelsbasedonadatasetwithsingleSSQscore-likelabelscanonly axessimultaneously. Keshavarzetal.[17]showthatvisualrotation
+producean“overall”oraveragepredictiveextentofthesicknessand withmorethantwoaxeswillinducehighercybersicknessthanasingle-
+fallshortofmakingmoment-to-momentpredictions.Thisisespecially axis rotation. Another factor that should be considered in visually
+problematic for highly interactive content. We also observed that inducedmotionsicknessisthefrequencyofthemovement.
+addingpersonaltraitscanfurtherimprovethepredictionperformance Whilethe“precise”relationbetweencybersicknessandvirtualmo-
+andreflecttheindividualdifferences.Ourcontributionsaresummarized tionprofilesisstillunderinvestigation,therearemultipleworksthatat
+asfollows: leastpointtotheclosemutualcorrelation.Thus,inthiswork,weopt
+touseonly,forpracticality’ssake,thevirtualmotionprofile(topredict
+• Anecologicallyvalidanddenselycollectedtimeseriescyber-
+orassessthebasicextentofcybersickness)and,optionally,personal
+sicknessdataset:Atimeseriescybersicknessdatasetiscompiled,
+characteristicsinformation(toaddressindividualdifferences)usingthe
+reportingtheFMSscoredenselyevery0.5secondwithmorethan
+machinelearningapproach.
+150users(morethan400datapointsforeachparticipant)andfor
+avarietyofvirtualmotiontypes(e.g.,allsixdegreesofmotion). 2.2 CybersicknessDatasets
+Alldatacollectionsessionslastedmorethan5minutes,unlike 2.2.1 Withphysiologicalsignaldata
+otherstudies[22,25,36], whereeachsessiontooklessthan2
+Severaldatasetshavebeencreatedbyresearcherstodevelopcybersick-
+minutesoreven90seconds, whichmightnotbelongenough
+nesspredictionmodels,particularlyusingvariouspsychologicaldata.
+to experience cybersickness. In addition, it was ensured that
+Jeongetal.[14]collectedEEGandcybersicknessdatawhilepartici-
+thecarry-overeffect[46]wasminimizedbystrictlyadheringto
+pantsviewed360◦ videos,usingakeyboardtoassesscybersickness
+theone-day-one-experimentpolicywith16hoursbetweenthe
+bypressingakeywhenevertheyfeltsick.Therewasa3-minuterest
+collectionsessions. Thelinkforthedatasetisprovidedonthis
+periodbetweenthe360◦videoviewings,butthisistooshorttorecover
+GitHubpage,identicaltothelinkontheabstract.
+fromtheinducedcybersicknesssymptoms;therefore,thereliabilityis
+• On-linepredictionofthecybersicknesstrendandextentbased questionable[46].
+onthedataset:Wedemonstratethefeasibilityandpowerofthe Smythetal.[36]collectedcybersicknessdatausingtheFMSmethod
+“moment-by-moment” cybersickness prediction model trained [18]withtheEDA(ElectrodermalActivity)andskintemperaturedata,
+withtheaforementioneddataset. Wecompareitsperformance but could not establish any significant inter-relationship. Xue et al.
+tothatofthemodeltrainedonadatasetthatonlyhastemporally [44]collectedemotiondataandphysiologicalresponses(alsoEDA
+sparsemeasurements(theextremecasebeingjustasingleSSQ- andskintemperature)withSSQscorestocreateanemotion-related
+likelabelpersession). datasetfor360◦videos.However,thestudywasmostlyfocusedonthe
+affectivestate(e.g.,valenceandarousal)anditscorrelationwiththe
+• Ablationstudythatilluminatesthecomparativeeffectsof physiologicaldata.
+differentfactorsoncybersickness:Throughtheablationstudy, Kimetal.[21]createda 360◦ videodatasetwithvariableframe
+different factors, objective and user-specific, are compared in rateandphysiologicalsignalsandSSQresponses.Thesicknessscore
+terms of their effects on cybersickness. In particular, we also wascollectedafterviewingeachvideo,lasting60secondseach.Dong
+showthatthecharacteristicsofvirtualmotion,whicharemainly et al. [6] created a dataset with head movement, heart rate, and a
+agnostic to individual differences, are correlated with the be- cybersicknesssurveywhileplayingmultiplevirtualrealitygames.The
+haviorofcybersickness. Thisismadepossiblebyrelatingthe SSQwascollectedafterplayingagamefor3to5minutes.
+ever-changing motion profile to the moment-by-moment sick- Whilecybersicknesspredictionorassessmentmodelsbasedonsuch
+nesslabels.Itvalidatesthelong-believedhypothesisthatmotion datasetshaveshownvaryingdegreesofsuccess,collectingphysiologi-
+characteristicsareasignificantlyimportantobjectivefeaturefor caldataiseitherimpracticalorcostlyinareal-lifeVRusagescenario.
+sicknessassessment. MostVRdevicesdonotincludephysiologicalsensors(e.g.,EEG,HR,
+EDA,ECG,etc.). Asidefromrequiringadditionalexternaldevices,
+• Demonstrationofusinguser-specificdatatomodelindividual
+whichmostusersdonothave,thereareconflictingreportsonwhether
+differences:Byincorporatingstaticuser-specificdata(e.g.,age,
+physiological signals do, in fact, correlate with cybersickness. For
+gender, MSSQ)intothebasicvirtualmotiondata, wedemon-
+example,aworkfromNalivaikoetal.[31]reportsthatheartratehas
+stratehowpredictionaccuracycanbeimprovedandtailoredto
+correlationwithcybersickness,whileDennisonetal.[5]didnotfind
+individualusers.
+sucheffects.
+2 RELATEDWORK
+2.2.2 Temporalresolution
+2.1 VirtualMovementandCybersickness
+Mostcybersicknessrelateddatasetsusepost-evaluation—thatis,sick-
+Visuallyinducedmotionsicknesshasbeenapersistentproblemwhen nessassessmentisdone(e.g.,usingtheSSQ[16])afterviewingthe
+using virtual reality systems. Typical symptoms include eye strain, giventestcontent.Thisispartlyduetothelargenumberofquestions
+headache, nausea, and in severe cases vomiting [24]. Attempts to tobeanswered,whichisnotfeasibleduringthetest.Forthis,in-situ
+explaincybersicknesswithvisualmotionandvestibularstimulushave on-lineassessmentmethodssuchastheFMShavebeensuggested[18],
+been madein multipleworks. Bos etal. [3] created a hypothetical inwhichtheuserisaskedtomakeaverysimpleandshortassessment
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 3 ---
+3348 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 32, NO. 5, MAY 2026
+ofthesicknesswhileexperiencingthetestcontent.Thisway,sickness somewhatdubious,asthecutusedformotionsicknessdetermination
+datacanbecollected,atleastpartially,atadensertemporalresolution. wasnotprovided.
+IntheworkofLeeetal.[25],SSQscoreswerecollectedevery90
+Weinaetal.[15]usedboththeCNNandLSTM-RNNarchitectures
+secondsfrom20subjects.TheimageframeitselfandEEG,EKG,and
+topredictcybersickness.ThebestcaseresultshowedanMSEof0.009,
+GSRwerealsoacquired.However,asmentionedabove,asthereare14 which is rather questionable since the R2 was only 0.868 when the
+SSQquestionstobeanswered,thelengthyinterruptions(toanswerthe
+MSEindicatedanear-perfectpredictionfromthegroundtruthdataset,
+questions)couldhaveaffectedthedata,possiblyinanunknownway.
+labeledin0to11-pointscale.
+Kimetal.[23]collectedasubjectivemeasureofcybersicknessfrom
+1to5(simple),with44VRcontentsperparticipant.EachVRcontent Jeongetal.[14]usedCNNnetworks,usingthespectrogramofthe
+onlylasted30seconds,whichdoesnotseemlongenoughtoinducea EEGsignalsastheinput.Whiletheaccuracywasabove90%,thepaper
+sufficientextentofcybersickness.Moreover,thetest’stotaldurationof did not provide other important metrics such as precision or recall.
+over2hours(44different30-secondVRcontents)wasexcessive,and Therefore,itisdifficulttoassessitstrueperformance.
+the3-minuterestingperiodbetweentestswasrelativelyinsufficientfor
+Leeetal.[25]usedavarietyofDNNtechniques(LSTM,1/2/3D
+recoveryfromtheensuingsickness.
+CNNs)toextractvariousfeaturesfromthecontentandphysiological
+TheworkfromIslametal.[11]collectedFMSevery30seconds
+responses,andattemptedtoregressandpredicttheSSQscore. The
+duringthesessionandSSQattheendofeverysession. Whilethis
+RMSE,PLCC [7], and SROCC [1]metrics have shown reasonable
+followstheverypurposeofFMS,i.e.,on-linesicknessdatacollection,
+performance,howeverthedatasetisunavailable.Kimetal.[23]useda
+datawiththe30-secondcollectionperiodmaybetoosparsetobea
+similarapproachtodistinguishamongcognitive,visual,spatial,and
+baselineforagoodprediction/assessmentmodel.Fromamorerecent
+temporalfeaturesfromtheirdataset(whichisnotpubliclyavailable)
+workfromJeongetal.[13],theexperimentconsistedoffour45-second
+andpredicttheextentofcybersicknessinfivelevels. Theconfusion
+videosforeachsession,andtookFMSevery15seconds.
+matrixoftheclasspredictionresultswasprovided,anditwasoneof
+Similarly,Wenetal.[43]collectedthecybersicknessresponseevery thefewexampleswherethemetricswereprovidedindetail,butthe
+30secondsbyvoice.Whilethedatasetincludesarichsetofsupport datasetisnotavailable.
+data,suchastheheadposition,gaze,contentmotionvector,andphysi-
+ologicalsignals,suchasheartrate,the30-secondsamplingperiodis ArecentworkfromIslametal.[11]testeddifferentDNNarchitec-
+likewisedeemedtoolong.Inaddition,atthetimeofthiswriting,itis turesforsicknessprediction(includingtheCNN-LSTMmodels,Deep
+notpubliclyaccessible. Temporal Convolution Networks with 1D convolutional layers and
+In summary, for many of the major datasets we have reviewed, residualnetworks,andattention-basedLSTM)withtheirowndataset,
+the test duration was either too short to induce a sufficient level of whichcollectedFMSdataevery30seconds.Whiletheinputrangeof
+cybersicknessinasinglesession,beinglessthanaminuteinextreme theFMSscoreswasbetween0and4,thesmallMAEandRMSE(0.5
+cases,orthedatawascollectedtoosparsely,rangingfrom15seconds to0.6)andsMAPEbeingjust40%,conversely,hintsthattheground
+to3minutes.Itisquiteclearthatahighertemporalresolutionwould truthFMSscoremighthaverangedonlybetween0and2(i.e., not
+beneededforeffectivereal-timesicknessprediction—e.g.,sickness sufficientlyhighsicknessinducedinthefirstplace)orscalenormal-
+levels can change significantly during 15 seconds. In addition, the izationmighthavebeenneeded. Confirmationisdifficultduetothe
+overalllengthforeachparticipantwastoolongwithminimalresttime, unavailabilityofthedataset.
+whichwouldhavedefinitelycausedthecarry-overofcybersickness
+Wangetal.[42]usedLSTMandhiddenlayersforabinaryclassi-
+asthetestprogressed. Theunavailabilityofthedatasetdefeatsthe
+ficationtask,buttherewasnomentionofrecall,precision,orother
+very purpose of a dataset (like cross-comparison and avoidance of
+metrics.Thedatasetisnotpubliclyavailable.
+redundantwork)andfurtherbringsaboutdoubtsaboutitsintegrity.
+Thisworkprovidesapublicdatasetwiththegroundtruthsicknessdata Another work from Jeong et al. [13] utilized transformers with
+collectedusingtheconventionalon-linemethod(suchastheFMS) specifiedencoders,providingMAEandRMSE,butitalsosharesthe
+densely(probablythedensesttodate),withdatapresentatevery0.5 sameissueofnotclarifyingthegroundtruthdatarange;consequently,
+seconds.Theresolutionof0.5secondswouldbemorethansufficient itisunclearifthepredictionissufficientlyplausible.Comparisonof
+formoment-by-momentsicknessprediction. MAEandRMSEwithotherworksisalsoprovided,butthedatasetsof
+thecomparedworkshavedifferentscales.
+2.3 CybersicknessPrediction Leeetal.[26]usedtheSSQdatafromPadmanabanetal.[33]and
+augmentedthedatasetusingthevideosmentionedinPadmanaban’s
+Predictingcybersicknessusingphysiologicalorvisualdatahasbeen
+work. 3Dconvolutionnetworkswereusedandyieldedbetterresults
+tried on many occasions. However, recent cybersickness machine
+compared to Padmanaban’s work, showing a higher correlation in
+learningapproacheshaveshownsometroublesometrendsofeither
+predictingthecybersicknessofsomevideos. AlthoughthePearson
+thedatasetnotbeingpublicortheauthorsneglectingtoprovidethe
+linearcorrelationcoefficient(PLCC)appearspromising,thetablefrom
+appropriateperformancemetrics. Beforethe(highlyeffective)deep
+theworkrevealsa14.9differenceinpredictingtheSSQscorefora
+learningtechniquesbecamepopularforclassification/predictiontasks,
+specificvideo.ThepredictionwasalsomadeontheSSQscoreofeach
+optimizationandregressionhaveoftenbeenusedforfindingandana-
+videoandnotonspecificpointsoftheexperience.
+lyzingthecorrelationbetweendatavariables(e.g.,cybersicknessscores
+andtheprobablefactors). Thus,whileapplyingmachinelearningandDNNtocybersickness
+So et al. [37] used the notion of spatial velocity (SV) to predict seemstobethenaturalandobviouschoice,tothisend,theoverview
+vectioninagivenscene. Linearregressionwasusedtofindthehigh ofpreviousworkillustratesthatitisstillnotclearwhatkindofdata
+correlationbetweenSVandSSQ[16], e.g., comparedtothevisual needstobecollected—mostdatasetssimplytrytoincludeallprobable
+fore-and-aftmovementorwiththeyawaxisrotation.Padmanabanet featuressuchasthecontentitself,virtualmotioninformation,physi-
+al.[33]usedthedecisiontreeintheirattempttorelateSSQscoresto ologicalsignals,anduserspecifictraits. This,inturn,alsomakesit
+theirownhandcraftedfeaturesthatcapturedthevisualchangeinthe difficulttoconvergeontheproperDNNarchitecture.Thedifficultyin
+content.Whiletheerrorwasquitehighcomparedtothemorerecent leveragingpreviousworkalsostemsfromthefailuretoreportcompar-
+works,itshowedadeparturefromthemoreclassicallinearregression ativeperformancestatisticsinapropermanner.Asalsopointedoutin
+methodandcouldcapturenon-linearrelationsbetweentheproposed theprevioussubsection,mostpredictionmodelshavenotuseddatasets
+featuresandcybersickness. withsufficientlytemporallydensesicknessvaluation,albeitsimple—
+Liaoetal.[27]usedtheDNN(LSTManddenselayers)withthe perhapsthebestcasebeingthedatasetwith30-secondperiodFMS
+brainwave(EEG)datatopredictcybersickness. Theresultingper- data[11]. TheTable7intheAppendixsummarizesthefeaturesof
+formancewithMAE(meanabsoluteerror)of0.1(inthebestcase)is someofthemajorcybersicknessdatasetsandpredictionmodels.
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 4 ---
+ryu AND KIM: PreDIctINg cybersIcKNess treND AND exteNt bAseD oN FMs lAbeleD DAtAset 3349
+3 DATASETCOLLECTION
+3.1 CollectionProcedure
+3.1.1 DataCollection
+Thedatasetwascollectedandaccumulatedoverfourdifferentcyber-
+sicknessrelatedexperiments.Whiletheseexperimentsweredesigned
+differentlyforvariousobjectives(anddifferentsubjectpools),thedata
+werecollectedinthesameunbiasedwayattheindividualsessionlevel
+—i.e.,usingthesametestcontentandprocedurallogistics.
+Thefirstexperimentwasabetween-subjectsdesign,thustherewas
+noneedforconsiderationoftherestintervalsandcarry-overeffects.
+Theremainingthreeexperimentswereallwithin-subjects,andforthese
+cases,theparticipantshadatleastadaybetweentheexperimentsto
+acquiremoretrustworthycybersicknessdatawithoutthecarry-over
+effect[46]. Forlackofspace,weomitthedetaileddescriptionofall
+theexperiments,butasalreadyindicated,alltheindividualsessions
+(ortreatments)involvedthesametestcontentandproceduralanddata
+collection logistics. By such a measure, the integrity and bias-free
+natureofthedatasetispreserved.
+3.1.2 TestSession
+Theindividualtestsession,duringwhichdatacollectiontookplace, Fig.3:Trajectory(X,Y,Zconvention)ofthevirtualusermovementwithin
+beganwithapre-experimentsurvey. Theparticipantwasinformed thesickness-inducingtestenvironment
+about the experiment and notified that the test could cause mild to
+seriouscybersickness. Aconsentformwasfilledoutalongwithper-
+sonalandbackgroundinformation.Thetestcontent,whichconsisted
+TheFMSscore, usedasthegroundtruthdataforcybersickness,
+of a virtual space flight (developed using Unity game engine [39]),
+wasrecordedevery0.5secondsin-gametimeusinganexternaldevice
+lastedaround4minutesforeachsession,anddependingontheexperi-
+(Microsoft Surface Dial). The dial device was chosen for making
+ment,theparticipantsexperienceduptofiverepetitionsofthevirtual
+relativeinputfast—namely,adjustingthecurrentscoreondemand.A
+environment.
+slider[4]oradedicatedkey/buttondevice[45]wouldalsohavesufficed.
+Direct(absolute)inputmethodwasavoidedasthetimeneededforthe
+usertothinkandidentifytherightinputkeyorvaluewouldinterfere
+withthetaskandproducebiasinthedata.Thatis,oncethescorewas
+initializedandsetatthebeginning, thecurrentvaluewasshownto
+theuser,thentheuserusedthedialtomakeithigherorlower—if
+(a)Sicknessscale(icons)from“No”sicknessto“Severe”sickness not,thescorewaskeptthesameandrecordedassuch.Adjustingthe
+dialfunctionswouldchangetheFMSvalueasshowninFigure.4b,
+increasingthevaluewhenturnedclockwiseanddecreasingthevalue
+whenturnedtheotherway. Themotionprofiledatawassavedatthe
+samerateastheFMSscore.SeeFigure4.
+(b)Thesicknessscaleshowntotheuserduringandwithinthetestenvironment. (a)Testenvironment. (b)TheMicrosoftSurfacedial
+Fig.2:Thesicknessscale(andthecorrespondingfacialicon)andthe Fig.4:FMSwascollectedinrealtimeduringtheexperiment.Notethe
+currentvalueshowntotheuserduringthetestwhenevertheFMSinput Surfacedialheldontherighthand.Uponactivation,thecurrentscore
+ismade,anditsvalueischanged.Theiconandscalewouldfadewithin wasshortlydisplayed,andtheFMSscoreswereadjustedbyturningthe
+asecondwhennoinputsaremadetominimizetherestframeeffect[34]. surfacedial.
+3.1.3 TestContentandSet-up 3.1.4 InstitutionalReviewBoardApprovalandParticipantData
+Handling
+MetaQuest3headset(resolutionof2 2064 2208and90to120Hz
+× ×
+refreshrate)[29]wasusedforalldatacollectionsessions. Ahigh- Wehavereceivedethicalapprovalsforalltheexperimentswithinwhich
+endPC(AMDRyzen75800X,NVIDIARTX3070Ti,64GBRAM, the data collection sessions were run from the Institutional Review
+runningWindows11)wasusedtorunthetestcontent,maintaininga BoardofKoreaUniversity,andallparticipants’datawereanonymized
+framerateofhigherthan72Hzinallcases.Themotionprofiledataof in the dataset. All participants were allowed to withdraw from the
+thetestcontent(seeFigure.3)wascollectedwithinthecontentthrough experimentiftheywishedtodoso.Aprecautionexplainingtheside
+the Unity engine — that is, the velocity, acceleration, and angular effectsoftheexperimentswasgivenbeforesigningtheconsentform.
+velocitycalculatedfromthepropertiesofthevirtualplayer’sheadset Thecollectedpersonalinformationwillbedeletedaftertherequired
+object. storageperiodrequiredbytheInstitutionalReviewBoard.
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 5 ---
+3350 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 32, NO. 5, MAY 2026
+Time Series data input Static data input
+- Acceleration, Rotation, Time - Age,MSSQ,Gender
+(None, 420, 7)
+(Numberofsamples,4)
+Dense
+(None,420,64) (Number of samples, 16) Dense
+Add & Norm (None, 64)
+Cocatenate
+(None, 420, 64)
+(None, 420, 64) Multi-Head (None, 80)
+Dense
+Attention
+(Numhead:4, (None, 420, 64) GlobalAverage Dense
+Dimension: 64)
+(None, 420, 64) Dropout pooling (None, 64)
+(None, 420, 64)
+Dense
+(None, 420, 64)
+Add & Norm (None, 128)
+(None, 420, 64) Dense
+(None,64)
+Dense
+Output(None,420)
+Fig.5:MultiheadAttention-basedcybersicknesspredictionmodel.
+3.1.5 Participants hadameanof6.37,astandarddeviationof5.37,Xaxisacceleration
+hadameanof-0.0014,astandarddeviationof4.45,Yaxisacceleration
+Forthefirstexperiment,48subjectswererecruitedfromtheonline
+hadameanof-0.024,astandarddeviationof5.14,Zaxisacceleration
+communityofourinstitution.Theparticipantsconsistedof18males
+hadameanof -0.045, a standarddeviationof3.13, Xaxisangular
+and30femaleswithanaverageageof25.52andastandarddeviation
+velocity had a mean of -1.44, standard deviation of 20.80, Y axis
+of3.31.ThedatasetwascollectedduringApril2024.
+angularvelocityhadameanof-0.046,standarddeviationof31.32,Z
+Inthesecondexperiment,37subjectswererecruitedfromthesame
+axisangularvelocityhadameanof4.85,standarddeviationof34.06.
+onlinecommunityofourinstitution.Theparticipantsconsistedof13
+Forthestaticfeatures,theMSSQscorehadameanof15.45,astandard
+males and 24 females with an average ageof 24.58 and a standard
+deviationof8.74,andagehadameanof24.90,astandarddeviationof
+deviationof4.06. ThedatasetwascollectedduringSeptember2024.
+4.24.Therewere246experimentsconductedonfemalesand181on
+Theexperimentwasawithin-subjectsexperimentoncybersickness
+males.
+with3conditionsforeachparticipant.
+Inthethirdexperiment,31subjectswererecruitedfromthesame
+onlinecommunityofourinstitution.Theparticipantsconsistedof19 5 DATAUTILIZATION
+males and 12 females with an average ageof 24.27 and a standard
+5.1 FMSScorePrediction
+deviationof4.33.ThedatasetwascollectedduringOctober2024.The
+experimentwasawithin-subjectsexperimentoncybersicknesswith4 Wetriedoutfourpredictionmodelstohandleandcapturethecumu-
+conditionsforeachparticipant. lativeeffectsofthetimeseriescybersicknessdata,includingabasic
+Inthefourthandlastexperiment,40subjectswererecruitedfromthe linearregressionmodel,apaired1DCNN[42],anLSTM[11],anda
+aforementionedonlinecommunityofourinstitution.Theparticipants transformer[13](multi-headattentionmodel[41]).Thedetailsofthe
+consistedof20malesand20femaleswithanaverageageof26.15and respectivearchitectureandassociatedparametersareoutlinedinTable
+astandarddeviationof4.40.ThedatasetwascollectedfromFebruary 2.
+toApril2025. Theexperimentwasawithin-subjectsexperimenton Inparticular,thedetailsofthemulti-headattentionmodelareillus-
+cybersicknesswith5conditionsforeachparticipant. tratedinfigure5. Similartothestructureshowninthefigure,static
+featuressuchasageandMSSQscoresweremergedwiththeprocessed
+4 DATASETOVERVIEW timeseriesdatathatwentthroughthemulti-headattentionlayers.The
+genderfeaturewasone-hotencoded,andallstaticfeatureswerestan-
+Table1:Summaryofthecollectedcybersicknessrelateddata. dardized. The acceleration data had some outliers, in which both
+clippedvaluesandoriginalvalueswereusedtotrainandvalidatethe
+DataSource CollectedFeatures network.Theresultdidnotdiffer;therefore,theoriginalvalueswere
+Timestamp used.Thedatainputforallfourmodelswasthesameandwasprepro-
+XaxisAcceleration cessedbeforeuse.Sincedatacollectionexperimentsdifferedintheir
+YaxisAcceleration duration(andnumberofdatapoints),allwerecutatthe420thdata
+UnityEngine ZaxisAcceleration pointperexperimenttoensurethattheinputvectorsareusableforthe
+Xaxisangularvelocity models.Experimentswithlessthan420groundtruthFMSdatawere
+Yaxisangularvelocity discarded(butareincludedinthedataset). Thecollecteddatawere
+Zaxisangularvelocity usedtotrainthemodelfor30epochsforallmodels.
+ExternalDevice FMS
+Age 5.2 FMSScorePredictionResults
+Off-lineSurvey MSSQ
+Table3showstherespectiveperformancesofthefourpredictionmodels.
+Gender
+InadditiontoRMSE,MAE,andR²,tomeasuretheaccuracyregardless
+ofthescaleofthegroundtruthdata,wealsoreportonthesMAPE.
+The data distribution for the dataset is illustrated in on Figure.7 Thelinearregressioncoefficientsshowedthatthepersonalfeatures,
+locatedontheAppendicessection.Thecollectedfeaturescanbefound suchasage(0.1595)andMSSQscore(0.1229),hadahighcorrelation
+onTable1.Forvariablesthatwerecollectedinrealtime,FMSscore withtheFMSscore.Theresthadvaluesoflessthan0.05.Theresults
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 6 ---
+ryu AND KIM: PreDIctINg cybersIcKNess treND AND exteNt bAseD oN FMs lAbeleD DAtAset 3351
+Table2:SummaryofthethreeDNNarchitecturesfortime-series+staticinputmodeling.Staticinputcontainsdatafeaturesthatwerecollectedby
+thesurvey(e.g.personaldata).
+Model Module Layer Parameters/Notes
+Time-seriesencoder 3 × Conv1D (64, 128, 128 filters, kernel ReLUactivation,temporalfeatures
+CNN-based
+size=25, padding=same) + BatchNorm + extracted
+Dropout(0.3)
+Staticencoder RepeatVector(420)+Dense(64,ReLU) Staticfeaturesprojectedandaligned
+tomatchtimeseriesdatasequence
+length
+Time-seriesencoder LSTM(128, return_sequences=True) + Sequence-to-sequence modeling,
+LSTM-based
+LSTM(64, return_sequences=True) + tanhactivation(default)
+BatchNorm+Dropout(0.2)
+Staticencoder RepeatVector(420)+Dense(64,ReLU) Staticfeaturesprojectedandaligned
+tomatchtimeseriesdatasequence
+length
+Time-seriesencoder Dense projection → Multi-Head Atten- Temporalencoderwithresidualcon-
+Transformer-based
+tion(16, 64) + Residual + LayerNorm + nections,dropout(0.2)
+Feedforward(Dense(64,ReLU)+Dropout)
+Staticencoder Dense(16,ReLU)+fusionafterGlobalAv- Staticinputcombinedafterprocess-
+eragePooling1D ingtimeseriesdata
+showthatthemulti-headattentionmodelgenerallyperformedthebest Table 4: Down-sampled data against real-time data. Note that even
+thoughthepredictionresultsseemtoimprovewhenthegroundtruth
+intermsofRMSE,MAE,R²,andsMAPE.
+sampleshavealowerresolution,itactuallyperformsworseconsidering
+theactualgroundtruthdata.
+Table3:Performancemeasuresbetweenthefourpredictionmodels.
+Useddata RMSE MAE R² sMAPE
+Models RMSE MAE R² sMAPE
+Lowresprediction 3.5631 2.4530 0.5229 98.09%
+LinearRegression 4.2853 3.3632 0.3699 74.64%
+AgainstGroundTruth 4.2393 3.1813 0.2781 91.93%
+1DCNN+1DCNN 4.2706 3.3704 0.2675 78.52%
+Ours 3.8133 2.9831 0.4159 73.05%
+LSTM 4.1925 3.3044 0.2940 75.79%
+Multi-headAttention* 3.8133 2.9831 0.4159 73.05%
+increasedwhenboththepredictionsandtheresultsarederivedfrom
+5.3 ComparisontoPredictionwithSparseDataset thedown-sampleddata(withtheexceptionofsMAPE).However,in
+reality,whencomparedwiththeactualgroundtruthFMSdatacollected
+Asexistingdatasets,manyofthemnotevenavailable,allhavedifferent
+every 0.5 seconds, it shows that the prediction results are actually
+dataformatsandtimeresolutions(seeTable7),itisdifficulttocompare
+worse,failingtocapturethemomentswherethecybersicknessactually
+theperformanceofpredictionmodelsbetweenusingadensedataset
+decreasesfromtimetotime.Anexampleofsuchaperformancesample
+like ours to a particular sparser one. In fact, it is almost obvious
+isshowninFigure.6.Fromthefigure,itcanbeseenthattheprediction
+thatthelattercouldnotperformaccuratelyformakingpredictionsor
+maybesomewhatcorrectonlyatacertainperiodmatchingthatofthe
+assessmentsatahighrate.
+datasamples.
+5.4 AblationStudy
+Table5:Performanceofthetransformerwithfeatureremoved
+RemovedFeature RMSE MAE R² sMAPE
+PersonalData 4.0687 3.220 0.3351 75.75%
+Acceleration 3.8338 2.9905 0.4096 73.27%
+AngularVelocity 3.8093 2.8979 0.4171 73.39%
+(a)Predictionwiththeoriginaldensedata (b)withthedown-sampleddata Timestamp 3.7109 2.8978 0.4469 72.00%
+AllIncluded 3.8133 2.9831 0.4159 73.05%
+Fig.6: Thepredictionmadewiththedown-sampledgroundtruthdata
+failstocapturethedownwardchangesincybersicknessbetweenthe
+datasamplingperiod(blue:groundtruth,orange:predicted) Table5showstheresultsoftheablationstudyonthebest-performing
+transformermodel,isolatingcertaininputdata.
+Nevertheless,tomimictheeffectsofalongerintervalforcollecting Theerrorincreasedwhenpersonalinformation-relatedfeatureswere
+cybersickness,wehavedown-sampledtheFMSdatatohavethesame removedfromthemodel.Thiscouldindicatethatpersonalfeaturesdo
+valueforevery120datapoints,whichcorrespondsto60secondsinreal havesomeimpactwhenitcomestopredictingcybersickness.
+time,whichisthemostcommonintervalthatisused(intheprevious Themodelperformedbetterwhenangularvelocitywasremoved;
+work)tocollectFMSscores,toourknowledge. TheresultsinTable however,consideringthatthesMAPEscorebecamehigher,itisques-
+4 seems to indicate that the overall accuracy of the predictions has tionablewhetherthiswasanactualimprovementoverthebasemodel.
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 7 ---
+3352 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 32, NO. 5, MAY 2026
+Themodelalsoperformedbetterwithoutthetimestamp,suggesting withoutphysiologicaldata.Betterandrefinedmachinelearningmodels
+thatthedurationoftheexperiencemightbelessimpactfulthanthe mightimprovethepredictionresults.Thisremainsataskforthefuture,
+movementwithintheVRenvironmentortheindividualdifferencesand andthosewhoareinterestedcanutilizeourdatasettocreateamodel
+characteristicsoftheparticipant. forpredictingcybersickness.
+Theentiredatawascollectedonthesametestenvironment;therefore,
+Table6: Dynamictimewarpingvaluedifferencewithandwithoutthe themotionprofiledatavaluesthatwereusedtotrainthenetworkswere,
+staticfeatures(namely-Age,Gender,MSSQ)forthreeparticipants. ineffect,thesameforeveryindividual.Evenso,theFMSdatatendedto
+differwidelyamongusers,whichcouldbeduetotheinherentindividual
+DTWvalue DTWvalue differences,butalsoduetothefactthattheFMSmethoditselfcannot
+ParticipantNo
+withstaticfeature withoutstaticfeature escapefrombeingquiteasubjectivemeasureaswell.Wehavechosen
+aspaceenvironmenttoincludeall6axisofmotion(pitch,yaw,roll
+60 268.24 989.41
+rotation,X,Y,Zaxismovement),andwereabletocapturethefeasible
+90 297.28 437.43
+motionspossiblewithinthevirtualrealityenvironments.Anotherfactor
+100 535.29 984.10
+inchoosingaspaceenvironmentwasthatitwasabstractenoughto
+begeneralizableoverenvironmentssuchasrollercoastersorracing,
+While the prediction results from the multihead attention gave etc. However,itdoesnotchangethefactthatasinglemotionprofile
+around3MAE,theyindicatedthatthetrainedmodelcouldcapture wasusedforthedataset. Weplantocreateaheuristicalgorithmthat
+someoftheindividualdifferencesamongthesubjects, asshownin createsatrajectoryforeachexperimentsothatitcancoverallranges
+Table6. Dynamictimewarpingcancapturethesimilaritybetween ofpossiblemotionswithinavirtualenvironmentwhilemaintainingits
+the time series data [12]; therefore, we used it as a metric to show overalltimeperexperimentsession.
+anexampleofhowsimilarthepatternsarebetweenthegroundtruth Thedatawasmarkedata0.5-secondinterval,whichwasdeemed
+cybersickness.Theanalysiswasmadeoneachindividualexperiment. sufficientlycontinuousandavalueduringwhichasignificantchange
+Thetotalsumofthedynamictimewarping(DTW)valuealsodecreased in sickness would not occur. In addition (according to our rough
+whencalculatedforallsubjects.Notallsubjectsshowedadecreasein measurement),ahumanuserwouldbeabletochangeupto8level
+theirDTWvalues;however,anyincreasewasminimal.Thepredicted valuesinasinglerotationwithin0.5seconds,thusitwouldstillsupport
+valuechangedsignificantlyinmagnitudeaccordingtotheageorgender evenararecaseofinputtingfast-changingvalues.However,theoptimal
+andtheMSSQscoreoftheparticipant. collectionintervalremainstobeatopicforfurtherresearch.
+Our dataset was created using participants mostly in their mid-
+6 DISCUSSION twenties, with little variance. This has limited the dataset in terms
+Currently,therearenoacceptedstandardsonthesetoffeaturesthat ofagedistribution,whichmightlimititscapabilitiesincapturingcy-
+aretobecollectedasabasisforpredictingcybersickness. Thishas bersicknesstrendsondifferentagegroups.
+promptedvariousresearcherstoworkondifferentlycomposeddatasets. Forourfuturework,weplantoaddresstheissuesmentionedabove
+As such, a bundle of likely features has been included, such as the whileinvestigatingmoreinformationandfeaturesthatcanbecollected
+contentimageryandmotiondata,physiologicalsignals(e.g.,heartrate, using a typical VR setup to determine their relative importance to
+EEG,ECG,GSR,gaze),personalinformation,symptomsurvey,head cybersickness.Onecouldalsosurelyenvisionthatsensorsforcertain
+movementandbalancedata,makingthecollectionprocesspossibly physiologicalsignals(ifproventobeasignificantcontributingfactor
+inefficient. to cybersickness) may become a standard component in future VR
+Furthermore,itisimportanttonotethatmuchcareshouldbetakenin headsetsorcontrollers(e.g.,likeeyetrackershaverecently).Ourdata
+howthedataarecollected.Thetestcontentsshouldspecifyguidelines setwascreatedusingonlyonetestcontent. Althoughitincludeda
+onthethresholdofhowlongoneshouldbeexposedtoelicitsufficient varietyofmotionprofiles,itwouldbedesirabletocollectmoredata
+cybersicknesstoextractmeaningfuldata,atleastforanaverageperson, withamorevariedcontentandmotioncombinations.
+and also the time interval for rest betweenthe trials. Ideally, to be
+8 CONCLUSION
+conservative,aspreviousliteraturesuggests,therestperiodbetween
+thesessionsshouldbeatleastadayormore,notjustfordataintegrity In this work, we have created a public dataset, useful for building
+andpreventingthecarry-overeffect[46],butalsoforthesafetyofthe an on-line cybersickness prediction model. The most critical part
+participant. of the dataset is that the collected data has high temporal density,
+Themethodofcollectingthegroundtruthforcybersicknessshould makingitmostpropertotrainon-linepredictionmodels.Inaddition,
+alsobediscussed,especiallyinlightoftheobjective—e.g.,whetherit whilemostcybersicknessdatasetshavebeencollectedinawaythatis
+isforon-linepredictionoranoverallpredictionforthewholeexperi- vulnerabletothecarry-overeffect,ourdatasetwascollectedbystrictly
+ence.Symptomdetaileddenseon-linedataaredifficulttocollectdue complyingwiththeone-day-one-experimentpolicy,minimizingthe
+totheirvariety.Thisworkcollectedthegroundtruthforcybersickness riskofcollectingunreliablecybersicknessdata.Ithasbeencollected
+based on the work of Keshavarz et al. [18] — it did not report the throughmorethan140subjectswith420cybersicknessmeasurements
+symptomsofcybersickness,butjustasubjectiveratingoftheextentof each, giving more than 179,340 datapoints for this dataset without
+cybersickness.Manystudiescollectsimplisticdatainabinaryfashion includingtheadditionalfeaturevectors.
+—sickornot—withoutmeasuringtheextentofthesymptom,making EvenwithaverysimpleDNNmodel,trainingwiththegivendataset
+itdifficulttomakeaneffectiveprediction.Finally,tomakeon-linepre- yieldsreasonablepredictionperformance.Moreover,itshowssuperior
+diction(andapplymitigationmethodsrightaway),thesamplingperiod performance,albeitsomewhatobvious,evenwithouttheoften-usedbut
+ofthesicknessinformationorextentshouldbeasshortaspossible. difficult-to-apply-in-practicephysiologicalsignals,comparedtotrain-
+ingwithasparsedataset.This,inturn,showstherelativeimportanceof
+7 LIMITATIONANDFUTUREWORK thevirtualmotionprofileofagivencontenttoassessingandpredicting
+thecybersicknesslikelihood.
+Thegroundtruthdataforthedatasetinthispaperwerecollectedusing
+Finally,webelievethatthereshouldalsobeanopendiscussionon
+the dial device in real time. However, by the nature of the dialing,
+whatandhowtocollectcybersicknessdata, whichshouldbemade
+for data entry of rapidly changing values, the process can be time-
+publicforthisimportantresearchareatomakesignificantprogressin
+consumingandcumbersome—e.g.,havingtodialthrough2to8togo
+thecomingfuture.
+from1to9(suddenoccurrenceofsickness).
+Compared with the previous works mentioned in Section 2, our
+predictionresultsshowloweraccuracy. Webelievethisisduetothe
+highindividualdifferencesbetweentheusers.Ourgoalwastoprovide
+adatasetandshowthatcybersicknesscouldbepredictedwellenough
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 8 ---
+ryu AND KIM: PreDIctINg cybersIcKNess treND AND exteNt bAseD oN FMs lAbeleD DAtAset 3353
+9 APPENDICES
+Table7:Featuresofpreviousdatasetsandassociatedpredictionmodels.Thedatapointsrefertothenumberofcybersicknessdatapointsthathave
+beencollected.xindicatesthattheworkdidnotusemachinelearningmethods.(Parta)
+Method-
+Independent Ground Prediction Publicly Provided
+Literature Interval DataPoints Models
+Variable Truth Type Available Metrics
+Used
+EEG Binary Hardto
+Continuous DNN
+Jeongetal.[14] HR Sickness estimate Classification X Accuracy
+(100–120Hz) CNN
+GSR Level(0–1) (100–120Hz)
+Smythet EDA Approx.300 p-value
+FMS 1minute X X X
+al.[36] SkinTemp (simulator) Coefficient
+Emotion Random
+EDA Forest
+Xueetal.[44] SSQ 5–6minutes 96 Classification O Pvalue
+BVP 1DCNN
+SkinTemp LSTM
+Video PLCC
+Kimetal.[21] GSR SSQ 1minute 1,600 CNN+LSTM Regression X SROCC
+HR RMSE
+Timestamp
+Dongetal.[6] Rotaion SSQ 3-5minute 150 X X X –
+HR
+Head CNN
+Ranking-
+Weinaet Movement LSTM- R²
+rating 3minute 360 Regression X
+al.[15] Viewfrom RNN MSE
+(subjective)
+eacheye SVR
+EEG
+EKG PLCC
+LSTM
+Leeetal.[25] GSR SSQ 90seconds 40 Regression X SROCC
+CNN
+Content RMSE
+View
+Accuracy
+Subjective(1- CNN
+Kimetal.[23] EEG Unknown 8,888 Classification X Confusion
+5) RNN
+Matrix
+Eye- Accuracy
+tracking, Precision
+Head- CNN- Classification Recall
+Islametal.[10] FMS 30seconds 1,890 X
+tracking, LSTM Regression R²
+Stereo PLCC
+Images RMSE
+Eye-
+tracking,
+Binary
+Head- Continuous Hardto
+Wangetal.[42] Sickness LSTM Classification X Accuracy
+tracking, (90Hz) estimate
+Level(0-1)
+Character
+motion
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 9 ---
+3354 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 32, NO. 5, MAY 2026
+Table7:Collecteddataanditsmethodsfrompreviousworks(Partb)
+Method-
+Independent Ground Prediction Publicly Provided
+Literature Interval DataPoints Models
+Variable Truth Type Available Metrics
+Used
+Eye-
+tracking, MAE
+Head- LSTM MSLE
+Islametal.[11] FMS 30seconds 1,890 Regression X
+tracking, CNN sMAPE
+HR RMSE
+GSR
+Eye-
+tracking,
+Head-
+MAE
+Jeongetal.[13] tracking, FMS 15seconds 2,700 Transformer Regression X
+RMSE
+EDA
+BVP
+SkinTemp
+Camera
+Movement,
+Object X Accuracy
+Wenetal.[43] FMS 30seconds 15,000 – Classification
+Movement, (DeadLink) F1score
+GSR
+HR
+Video
+Padmanbanet Decision
+GSR SSQ 1minute 1,600 Regression O Error
+al.[33] Tree
+HR
+Fig.7:Featuredistributionshownasaviolinplot.
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 10 ---
+ryu AND KIM: PreDIctINg cybersIcKNess treND AND exteNt bAseD oN FMs lAbeleD DAtAset 3355
+ACKNOWLEDGMENTS [18] B.KeshavarzandH.Hecht. Validatinganefficientmethodtoquantify
+motionsickness.HumanFactors,53(4):415–426,2011.PMID:21901938.
+ThisworkwaspartlysupportedbytheNRFgrant(RS-2025-00514411)
+doi:10.1177/00187208114037362,7
+andalsoIITP-ITRCgrant(IITP-2022-RS-2022-00156354),allfunded
+[19] B.Keshavarz,A.E.Philipp-Muller,W.Hemmerich,B.E.Riecke,andJ.L.
+bytheMSITofKorea.Theteaserimageandpartsoftheimplementa-
+Campos.Theeffectofvisualmotionstimuluscharacteristicsonvection
+tionofthecodewerecreatedusingChatGPT-4.
+andvisuallyinducedmotionsickness.Displays,58:71–81,2019.Special
+Issue:VisuallyInducedMotionSensations.doi:10.1016/j.displa.2018.07
+REFERENCES .0052
+[1] SpearmanRankCorrelationCoefficient,pp.502–505.SpringerNewYork, [20] B.Keshavarz,B.E.Riecke,L.J.Hettinger,andJ.L.Campos.Vectionand
+NewYork,NY,2008.doi:10.1007/978-0-387-32833-1_3793 visuallyinducedmotionsickness:howaretheyrelated? FrontPsychol,
+[2] B.Arcioni, S.Palmisano, D.Apthorp, andJ.Kim. Posturalstability 6:472,Apr.2015.1,2
+predictsthelikelihoodofcybersicknessinactivehmd-basedvirtualre- [21] H.G.Kim,S.Lee,S.Kim,H.Lim,andY.M.Ro. Towardsabetter
+ality.Displays,58:3–11,2019.SpecialIssue:VisuallyInducedMotion understanding of VR sickness: Physical symptom prediction for VR
+Sensations.doi:10.1016/j.displa.2018.07.0011 contents.CoRR,abs/2104.06780,2021.2,8
+[3] J.E.Bos,W.Bles,andE.L.Groen.Atheoryonvisuallyinducedmotion [22] H.G.Kim, H.-T.Lim, S.Lee, andY.M.Ro. Vrsanet: Vrsickness
+sickness. Displays,29(2):47–57,2008. HealthandSafetyAspectsof assessment considering exceptional motion for 360° vr video. IEEE
+VisualDisplays.doi:10.1016/j.displa.2007.09.0022 TransactionsonImageProcessing,28(4):1646–1660,2019.doi:10.1109/
+[4] V.Cantory,J.Kim,C.HuttonPospick,K.Vaziri,E.SumaRosenberg, TIP.2018.28805092
+andV.Interrante. Afeasibilityandimpactinvestigationofcontinuous [23] J.Kim,W.Kim,H.Oh,S.Lee,andS.Lee.Adeepcybersicknesspredictor
+subjectivecybersicknessfeedbackreporting.VRST’25,articleno.27,10 basedonbrainsignalanalysisforvirtualrealitycontents.InProceedings
+pages.AssociationforComputingMachinery,NewYork,NY,USA,2025. oftheIEEE/CVFInternationalConferenceonComputerVision(ICCV),
+doi:10.1145/3756884.37660464 October2019.3,8
+[5] M.S.Dennison,A.Z.Wisti,andM.D’Zmura. Useofphysiological [24] J.J.LaViola. Adiscussionofcybersicknessinvirtualenvironments.
+signalstopredictcybersickness. Displays,44:42–52,2016. Contains SIGCHIBull.,32(1):47–56,10pages,Jan.2000.doi: 10.1145/333329.
+SpecialIssueArticles–Proceedingsofthe4thSymposiumonLiquid 3333442
+CrystalPhotonics(SLCP2015).doi:10.1016/j.displa.2016.07.0022 [25] S.Lee,S.Kim,H.G.Kim,M.SeobKim,S.Yun,B.Jeong,andY.M.
+[6] J.Dong,K.Ota,andM.Dong. Whyvrgamessickness? anempirical Ro. Physiologicalfusionnet: Quantifyingindividualvrsicknesswith
+studyofcapturingandanalyzingvrgamesheadmovementdataset.IEEE contentstimulusandphysiologicalresponse.In2019IEEEInternational
+MultiMedia,29(2):74–82,2022.doi:10.1109/MMUL.2022.31761422,8 ConferenceonImageProcessing(ICIP),pp.440–444, 2019.doi: 10.
+[7] D.Freedman,R.Pisani,andR.Purves. Statistics(internationalstudent 1109/ICIP.2019.88029832,3,8
+edition).Pisani,R.Purves,4thedn.WWNorton&Company,NewYork, [26] T.M.Lee,J.-C.Yoon,andI.-K.Lee.Motionsicknesspredictioninstereo-
+2007.3 scopicvideosusing3dconvolutionalneuralnetworks.IEEETransactions
+[8] D.L.Harm,D.E.Parker,M.F.Reschke,andN.C.Skinner.Relationship onVisualizationandComputerGraphics,25(5):1919–1927,2019.doi:10
+betweenselectedorientationrestframe,circularvectionandspacemotion .1109/TVCG.2019.28991863
+sickness. BrainResearchBulletin,47(5):497–501,1998.doi:10.1016/ [27] C.-Y.Liao,S.-K.Tai,R.-C.Chen,andH.Hendry. Usingeeganddeep
+S0361-9230(98)00096-31 learningtopredictmotionsicknessunderwearingavirtualrealityde-
+[9] R.Islam,S.Ang,andJ.Quarles.Cybersense:Aclosed-loopframeworkto vice.IEEEAccess,8:126784–126796,2020.doi:10.1109/ACCESS.2020
+detectcybersicknessseverityandadaptivelyapplyreductiontechniques.In .30081653
+2021IEEEConferenceonVirtualRealityand3DUserInterfacesAbstracts [28] Y.-H.Lim,J.-S.Kim,H.-W.Lee,andS.-H.Kim. Posturalinstability
+andWorkshops(VRW),pp.148–155,2021.doi:10.1109/VRW52623.2021 inducedbyvisualmotionstimuliinpatientswithvestibularmigraine.
+.000351 FrontiersinNeurology,Volume9-2018,2018.doi:10.3389/fneur.2018.
+[10] R.Islam,K.Desai,andJ.Quarles. Cybersicknesspredictionfromin- 004331
+tegratedhmd’ssensors:Amultimodaldeepfusionapproachusingeye- [29] Meta.Metaquest3.https://www.meta.com/quest/quest-3/,2025.
+trackingandhead-trackingdata.In2021IEEEInternationalSymposium Accessed:2025-08-28.4
+onMixedandAugmentedReality(ISMAR),pp.31–40,2021.doi: 10. [30] microsoft. Microsoft surface dial. https://www.microsoft.
+1109/ISMAR52148.2021.000178 com/en-us/d/surface-dial/925r551sktgn?activetab=pivot:
+[11] R.Islam,K.Desai,andJ.Quarles. Towardsforecastingtheonsetofcy- overviewtab3,2025.Accessed:2025-08-15.2
+bersicknessbyfusingphysiological,head-trackingandeye-trackingwith [31] E.Nalivaiko,S.L.Davis,K.L.Blackmore,A.Vakulin,andK.V.Nesbitt.
+multimodaldeepfusionnetwork.In2022IEEEInternationalSymposium Cybersicknessprovokedbyhead-mounteddisplayaffectscutaneousvascu-
+onMixedandAugmentedReality(ISMAR),pp.121–130,2022.doi:10. lartone,heartrateandreactiontime.Physiology Behavior,151:583–590,
+1109/ISMAR55827.2022.000263,5,9 2015.doi:10.1016/j.physbeh.2015.08.0432
+[12] F.Itakura.Minimumpredictionresidualprincipleappliedtospeechrecog- [32] C.M.Oman.Motionsickness:asynthesisandevaluationofthesensory
+nition.IEEETransactionsonAcoustics,Speech,andSignalProcessing, conflict theory. Canadian Journal of Physiology and Pharmacology,
+23(1):67–72,1975.doi:10.1109/TASSP.1975.11626417 68(2):294–303,1990.PMID:2178753.doi:10.1139/y90-0441
+[13] D.JeongandK.Han.Precyse:Predictingcybersicknessusingtransformer [33] N.Padmanaban,T.Ruban,V.Sitzmann,A.M.Norcia,andG.Wetzstein.
+formultimodaltime-seriessensordata.8(2),articleno.42,24pages,May Towards a machine-learning approach for sickness prediction in 360°
+2024.doi:10.1145/36595941,3,5,9 stereoscopicvideos.IEEETransactionsonVisualizationandComputer
+[14] D.Jeong,S.Yoo,andJ.Yun.Cybersicknessanalysiswitheegusingdeep Graphics,24(4):1594–1603,2018.doi:10.1109/TVCG.2018.27935603,
+learningalgorithms.In2019IEEEConferenceonVirtualRealityand3D 9
+UserInterfaces(VR),pp.827–835,2019.doi:10.1109/VR.2019.8798334 [34] J.D.Prothero,M.H.Draper,T.A.Furness,3rd,D.E.Parker,andM.J.
+2,3,8 Wells.Theuseofanindependentvisualbackgroundtoreducesimulator
+[15] W.Jin,J.Fan,D.Gromala,andP.Pasquier. Automaticpredictionof side-effects.AviatSpaceEnvironMed,70(3Pt1):277–283,Mar.1999.4
+cybersicknessforvirtualrealitygames.In2018IEEEGames,Entertain- [35] R.Reinhard,H.M.Rutrecht,P.Hengstenberg,E.Tutulmaz,B.Geissler,
+ment,MediaConference(GEM),pp.1–9,2018.doi:10.1109/GEM.2018. H.Hecht,andA.Muttray.Thebestwaytoassessvisuallyinducedmotion
+85164693,8 sicknessinafixed-basedrivingsimulator.TransportationResearchPart
+[16] R.S.Kennedy,N.E.Lane,K.S.Berbaum,andM.G.L.and.Simulator F:TrafficPsychologyandBehaviour,48:74–88,2017.doi:10.1016/j.trf.
+sicknessquestionnaire:Anenhancedmethodforquantifyingsimulator 2017.05.0052
+sickness.TheInternationalJournalofAviationPsychology,3(3):203–220, [36] J.Smyth,S.Birrell,R.Woodman,andP.Jennings.Exploringtheutilityof
+1993.doi:10.1207/s15327108ijap0303 edaandskintemperatureasindividualphysiologicalcorrelatesofmotion
+3 1,2,3 sickness.AppliedErgonomics,92:103315,2021.doi:10.1016/j.apergo.
+[17] B.KeshavarzandH.Hecht. Axisrotationandvisuallyinducedmotion 2020.1033152,8
+sickness:theroleofcombinedroll,pitch,andyawmotion.AviatSpace [37] R.H.Y.So,A.Ho,andW.T.Lo. Ametrictoquantifyvirtualscene
+EnvironMed,82(11):1023–1029,Nov.2011.2 movementforthestudyofcybersickness: Definition,implementation,
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.
+
+
+--- PAGE 11 ---
+3356 IEEE TRANSACTIONS ON VISUALIZATION AND COMPUTER GRAPHICS, VOL. 32, NO. 5, MAY 2026
+andverification. 10(2):193–215, 23pages, Apr.2001.doi: 10.1162/
+1054746017502168033
+[38] H. Ujike, T. Yokoi, and S. Saida. Effects of virtual body motion on
+visually-inducedmotionsickness. ConfProcIEEEEngMedBiolSoc,
+2004:2399–2402,2004.2
+[39] UnityTechnologies. Unity,2019. Gamedevelopmentplatform,game
+engine.4
+[40] T.vanGemertandJ.Bergström.Evaluatingvrsicknessinvrlocomotion
+techniques. In2021IEEEConferenceonVirtualRealityand3DUser
+InterfacesAbstractsandWorkshops(VRW),pp.380–382,2021.doi:10.
+1109/VRW52623.2021.000781
+[41] A.Vaswani,N.Shazeer,N.Parmar,J.Uszkoreit,L.Jones,A.N.Gomez,
+L.Kaiser,andI.Polosukhin.Attentionisallyouneed,2023.5
+[42] J.Wang,H.-N.Liang,D.Monteiro,W.Xu,andJ.Xiao.Real-timepredic-
+tionofsimulatorsicknessinvirtualrealitygames.IEEETransactionson
+Games,15(2):252–261,2023.doi:10.1109/TG.2022.31785393,5,8
+[43] E.Wen,C.Gupta,P.Sasikumar,M.Billinghurst,J.Wilmott,E.Skow,
+A.Dey,andS.Nanayakkara. Vr.net: Areal-worlddatasetforvirtual
+realitymotionsicknessresearch.IEEETransactionsonVisualizationand
+ComputerGraphics,30(5):2330–2336,2024.doi:10.1109/TVCG.2024.
+33720441,3,9
+[44] T.Xue, A.E.Ali, T.Zhang, G.Ding, andP.Cesar. Ceap-360vr: A
+continuousphysiologicalandbehavioralemotionannotationdatasetfor
+360◦vrvideos.IEEETransactionsonMultimedia,25:243–255,2023.doi:
+10.1109/TMM.2021.31240802,8
+[45] Y.Yang,H.Kim,J.Kim,andG.J.Kim.Pianofms:Real-timeevaluation
+ofcybersicknessbykeyboardfingering. In2024IEEEConferenceon
+VirtualRealityand3DUserInterfacesAbstractsandWorkshops(VRW),
+pp.731–732,2024.doi:10.1109/VRW62533.2024.001624
+[46] D.Zielasko,B.Rehling,D.Clement,andG.Domes.Carry-overeffects
+ruinyour(cybersickness)experimentsandbalancingconditionsisnot
+asolution. In2024IEEEConferenceonVirtualRealityand3DUser
+InterfacesAbstractsandWorkshops(VRW),pp.1–5,2024.doi:10.1109/
+VRW62533.2024.000072,4,7
+Authorized licensed use limited to: Beijing Information Science & Tech Univ. Downloaded on July 09,2026 at 12:36:28 UTC from IEEE Xplore. Restrictions apply.

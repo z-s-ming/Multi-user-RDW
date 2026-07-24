@@ -1,0 +1,820 @@
+# TRAINING_SPEC.yaml
+# 与 docs/research/PROJECT_CONTEXT.md 配套使用。
+# 目标：形成可复现、可审计、可用于论文统计报告的第一阶段训练与评估流程。
+
+project:
+  name: cybersickness_current_fms_estimation
+  stage: stage1_ryu_kim_base_model
+  task_type: causal_many_to_one_regression
+  primary_goal: >
+    使用过去一段虚拟运动数据和参与者静态信息，
+    对未见参与者估计窗口终点时刻的当前 FMS。
+  non_goals:
+    - sequence_to_sequence_fms_prediction
+    - using_historical_fms_as_input
+    - learning_rdw_control_policy
+    - determining_optimal_rdw_gain
+    - unity_integration
+  framework: pytorch
+  random_seeds: [42, 52, 62]
+  deterministic_training: true
+
+task_definition:
+  task_name: online_cybersickness_severity_estimation
+  output_semantics: fms_scale_equivalent_severity
+  preferred_model_name: fms_supervised_realtime_cybersickness_severity_estimator
+  avoid_terms:
+    - objective_dizziness_value
+  fms_usage:
+    training_supervision: true
+    validation_ground_truth: true
+    test_ground_truth: true
+    runtime_input: false
+  stage_boundaries:
+    project_mainline:
+      - realtime_cybersickness_quantification_base_model
+      - rdw_scene_transfer_and_personalization
+      - adaptive_rdw_adjustment_from_quantified_state
+    current_implementation_scope:
+      stage: stage1_only
+      allowed_tasks:
+        - data_inspection
+        - causal_window_construction
+        - baseline_training
+        - temporal_model_training
+        - offline_evaluation
+        - streaming_inference_validation
+      disallowed_tasks:
+        - transfer_learning
+        - rdw_finetuning
+        - unity_integration
+        - rdw_control
+    stage1_internal_public_data:
+      goal: "Validate unseen-participant current-FMS estimation within the Ryu-Kim data distribution."
+      proves_cross_scene_generalization: false
+    stage2_unity_external_validation:
+      freeze_model_before_collection: true
+      fms_used_only_as_ground_truth: true
+      model_controls_rdw: false
+    stage3_rdw_finetuning:
+      requires_rdw_gain_reset_and_spatial_state_data: true
+      compare_zero_shot_and_finetuned_models: true
+      control_policy_note: "Start with rule-based, small, constrained adjustments; learned control requires RDW experiments validating gain effects."
+
+paths:
+  # Paths are repo-root-relative.
+  raw_data_dir: shared/data/raw/pretraining/2025_Cybersickness_dataset/Dataset
+  processed_data_dir: shared/data/processed/ryu_kim
+  split_dir: shared/data/processed/ryu_kim/splits
+  checkpoint_dir: shared/models/checkpoints/stage1
+  result_dir: shared/data/exports/stage1/results
+  report_dir: shared/data/exports/stage1/reports
+  export_dir: shared/models/onnx/stage1
+
+reproducibility:
+  save_git_commit: true
+  save_config_snapshot: true
+  save_python_version: true
+  save_package_versions: true
+  save_device_information: true
+  save_dataset_file_checksums: true
+  save_run_start_end_time: true
+  save_random_seed: true
+  run_manifest_file: run_manifest.json
+
+data_schema:
+  grouping_keys:
+    participant_id: participant_id
+    session_id: session_id
+    condition_id: condition_id
+  time_column: timestamp
+  target_column: fms
+
+  dynamic_features:
+    - acceleration_x
+    - acceleration_y
+    - acceleration_z
+    - angular_velocity_x
+    - angular_velocity_y
+    - angular_velocity_z
+
+  static_features:
+    continuous:
+      - age
+      - mssq
+    categorical:
+      - gender
+
+  excluded_default_features:
+    - timestamp
+    - fms
+
+  feature_flags:
+    include_timestamp_as_feature: false
+    include_fms_history: false
+    include_derived_motion_features: false
+
+  units:
+    # 必须在数据检查阶段根据公开数据说明或源代码确认。
+    # 未确认前不得自行假设。
+    # 以下 TO_BE_CONFIRMED 是有意保留：
+    # - 加速度单位；
+    # - 角速度单位；
+    # - FMS 合法范围。
+    # Codex/实现代码必须在数据检查阶段根据数据说明、字段和源代码确认，
+    # 不能凭经验直接假设。
+    acceleration_x: TO_BE_CONFIRMED
+    acceleration_y: TO_BE_CONFIRMED
+    acceleration_z: TO_BE_CONFIRMED
+    angular_velocity_x: TO_BE_CONFIRMED
+    angular_velocity_y: TO_BE_CONFIRMED
+    angular_velocity_z: TO_BE_CONFIRMED
+    timestamp: seconds
+    fms: TO_BE_CONFIRMED
+
+feature_registry:
+  required_output: shared/data/exports/stage1/reports/feature_dictionary.csv
+  required_columns:
+    - canonical_name
+    - raw_column_name
+    - data_type
+    - source_type          # measured / survey / derived / metadata
+    - source_description
+    - unit
+    - coordinate_frame
+    - sampling_rate_hz
+    - derivation_formula
+    - derivation_parameters
+    - online_available
+    - role                 # input / target / grouping / analysis_only
+    - missing_value_rule
+    - notes
+
+data_inspection:
+  required_before_training: true
+  outputs:
+    - dataset_inventory.csv
+    - dataset_audit.json
+    - dataset_summary.md
+  checks:
+    - file_names_and_formats
+    - raw_column_names
+    - participant_count
+    - session_count
+    - condition_count
+    - rows_per_session
+    - timestamp_monotonicity
+    - duplicate_rows
+    - duplicate_timestamps
+    - sampling_interval_distribution
+    - missing_value_count_by_column
+    - invalid_value_count_by_column
+    - target_min_max
+    - target_distribution
+    - static_feature_distribution
+    - session_duration_distribution
+    - fms_update_event_distribution
+  fail_on:
+    missing_required_group_key: true
+    missing_target: true
+    non_monotonic_timestamp_after_sort: true
+    # 未确认单位允许完成数据审计报告，但不得进入正式训练或论文结果。
+    unknown_unit: false
+    unresolved_to_be_confirmed_for_training: true
+
+preprocessing:
+  sampling:
+    expected_interval_seconds: 0.5
+    expected_rate_hz: 2.0
+    resample_if_needed: false
+    # 第一轮先忠实使用原始对齐数据。若检查发现采样不规则，
+    # 必须先生成报告，再通过单独实验配置启用重采样。
+    maximum_allowed_gap_seconds: 1.0
+    split_sequence_at_large_gap: true
+
+  missing_values:
+    dynamic_features:
+      strategy: reject_window
+      maximum_missing_fraction_per_window: 0.0
+    static_continuous:
+      strategy: train_median
+    static_categorical:
+      strategy: explicit_unknown_category
+    target:
+      strategy: reject_sample
+
+  duplicates:
+    duplicate_timestamp_rule: report_then_keep_last
+    duplicate_row_rule: report_then_drop_exact_duplicates
+
+  scaling:
+    dynamic_continuous: standardize
+    static_continuous: standardize
+    fit_on_training_participants_only: true
+    save_scaler: true
+
+  categorical_encoding:
+    gender: one_hot
+    fit_on_training_participants_only: true
+    handle_unknown: explicit_unknown_category
+    save_encoder: true
+
+  target:
+    scale_target: false
+    output_activation: linear
+    target_bounds:
+      # FMS 合法范围必须由数据说明、字段或源代码确认；
+      # 未确认前不得凭常识假设最小值或最大值。
+      source: dataset_metadata_or_documentation
+      minimum: TO_BE_CONFIRMED
+      maximum: TO_BE_CONFIRMED
+    evaluation:
+      primary_use_raw_prediction: true
+      optional_report_clipped_prediction: true
+      clipped_result_must_be_labeled_secondary: true
+
+  fms_update_event:
+    derive: true
+    definition: "fms[t] != fms[t-1] within the same session"
+    use_as_model_input: false
+    use_as_target: false
+    use_for_analysis_slices: true
+    near_event_window_seconds: 5.0
+    limitation_note: >
+      该变量只是根据 FMS 数值变化推导的代理事件，
+      不等同于设备记录的真实用户操作时间。
+
+windowing:
+  causal: true
+  sample_interval_seconds: 0.5
+  window_duration_seconds: 20.0
+  window_length_steps: 40
+  stride_seconds: 0.5
+  stride_steps: 1
+  do_not_cross:
+    - participant_id
+    - session_id
+    - large_timestamp_gap
+  default_target:
+    name: current_fms
+    definition: "FMS at terminal timestep t"
+    prediction_horizon_seconds: 0.0
+  exploratory_targets:
+    enabled_by_default: false
+    horizons_seconds: [2.5, 5.0, 10.0]
+    future_fms_definition: "FMS(t + horizon)"
+    future_delta_definition: "FMS(t + horizon) - FMS(t)"
+  minimum_valid_window_fraction: 1.0
+
+window_experiments:
+  enabled: true
+  durations_seconds: [5.0, 10.0, 20.0, 40.0]
+  output_interval_seconds: 0.5
+  report_initial_warmup_time: true
+  report_by_duration:
+    - mae
+    - rmse
+    - high_fms_error
+    - output_stability
+    - model_latency
+    - initial_warmup_time
+
+split_protocols:
+  recommended_usage:
+    development: "开发调试：快速验证数据管线、窗口构造、模型代码和端到端产物。"
+    paper_main: "论文主结果：正式模型比较和统计报告。计算量明显更高。"
+
+  development:
+    intended_use: development_debugging
+    description: >
+      开发调试协议。用于快速迭代数据检查、预处理、窗口生成、模型训练和导出流程。
+      不作为论文正式模型比较的主结果。
+    method: participant_group_split
+    train_ratio: 0.70
+    validation_ratio: 0.15
+    test_ratio: 0.15
+    seed: 42
+    save_participant_ids: true
+
+  paper_main:
+    intended_use: paper_main_results
+    description: >
+      论文主结果协议。采用重复嵌套参与者级交叉验证，计算量明显高于 development，
+      但更适合作为正式模型比较、置信区间和统计检验的依据。
+    method: repeated_nested_group_cross_validation
+    grouping_key: participant_id
+    outer_folds: 5
+    outer_repeats: 3
+    outer_repeat_seeds: [42, 52, 62]
+    inner_folds: 4
+    hyperparameter_selection_metric: participant_macro_mae
+    final_prediction_type: out_of_fold
+    save_fold_assignments: true
+    rule: >
+      同一参与者的全部会话和窗口必须完全位于同一个外层折中。
+      测试折不得用于模型选择、早停或超参数调整。
+
+participant_weighting:
+  training_sample_weighting:
+    enabled: true
+    method: inverse_windows_per_participant
+    purpose: >
+      防止窗口数量较多的参与者在训练损失中占据过高权重。
+  evaluation:
+    primary_aggregation: participant_macro
+    secondary_aggregation: pooled_windows
+
+models:
+  realtime_requirements:
+    causal: true
+    fixed_historical_window: true
+    output: one_current_fms_value
+    disallow_bidirectional_lstm: true
+    disallow_future_padding: true
+    disallow_full_trajectory_input: true
+    transformer_requires_causal_attention_or_strict_history_window: true
+
+  core_models:
+    - mean_predictor
+    - static_ridge
+    - window_stats_ridge
+    - causal_1d_cnn
+    - unidirectional_lstm_or_gru
+    - causal_tcn
+    - compact_causal_transformer
+
+  optional_models:
+    - cnn_gru
+    - cnn_lstm
+    - ordinal_regression
+    - uncertainty_regression
+
+  baselines:
+    - id: mean_predictor
+      type: constant
+      input: none
+      definition: training_fold_mean_fms
+
+    - id: static_ridge
+      type: ridge_regression
+      input:
+        - age
+        - gender
+        - mssq
+      hyperparameters:
+        alpha: [0.01, 0.1, 1.0, 10.0, 100.0]
+
+    - id: window_stats_ridge
+      type: ridge_regression
+      input: window_summary_statistics
+      statistics:
+        - mean
+        - standard_deviation
+        - minimum
+        - maximum
+        - root_mean_square
+      hyperparameters:
+        alpha: [0.01, 0.1, 1.0, 10.0, 100.0]
+
+    - id: causal_1d_cnn
+      type: convolutional_sequence_regression
+      role: local_motion_pattern_baseline
+      enabled: true
+
+  sequence_models:
+    - id: lstm
+      enabled: true
+      temporal_encoder:
+        hidden_size: [32, 64]
+        num_layers: [1, 2]
+        bidirectional: false
+        dropout: [0.0, 0.2]
+      static_encoder:
+        hidden_size: 16
+      fusion:
+        hidden_size: 64
+        dropout: 0.2
+
+    - id: tcn
+      enabled: true
+      primary_realtime_candidate: true
+      temporal_encoder:
+        channels:
+          - [32, 32, 32]
+          - [64, 64, 64]
+        kernel_size: [3, 5]
+        dilations: [1, 2, 4]
+        causal: true
+        dropout: [0.1, 0.2]
+      static_encoder:
+        hidden_size: 16
+      fusion:
+        hidden_size: 64
+        dropout: 0.2
+
+    - id: transformer
+      enabled: true
+      temporal_encoder:
+        d_model: [32, 64]
+        num_heads: [2, 4]
+        num_layers: [1, 2]
+        feedforward_dim: [64, 128]
+        dropout: [0.1, 0.2]
+        positional_encoding: sinusoidal
+        causal_attention_mask: true
+        pooling: terminal_token
+      static_encoder:
+        hidden_size: 16
+      fusion:
+        hidden_size: 64
+        dropout: 0.2
+
+training:
+  loss:
+    name: huber
+    delta: 1.0
+    participant_sample_weights: true
+
+  optimizer:
+    name: adamw
+    learning_rate: [0.0003, 0.001]
+    weight_decay: [0.0001, 0.001]
+
+  batch_size: 64
+  maximum_epochs: 150
+  minimum_epochs: 10
+  gradient_clip_norm: 1.0
+
+  scheduler:
+    name: reduce_on_plateau
+    monitor: validation_participant_macro_mae
+    factor: 0.5
+    patience: 5
+    minimum_learning_rate: 0.00001
+
+  early_stopping:
+    enabled: true
+    monitor: validation_participant_macro_mae
+    mode: min
+    patience: 15
+    restore_best_weights: true
+
+  checkpointing:
+    save_best_full_model: true
+    save_best_temporal_encoder: true
+    save_last_model: true
+    include_optimizer_state_for_resume: true
+    save_optimizer_independent_weights: true
+
+model_selection:
+  primary_metric: participant_macro_mae
+  tie_breakers:
+    - participant_macro_rmse
+    - participant_macro_r_squared
+    - model_parameter_count
+  selection_rule: >
+    先依据内层验证集 participant_macro_mae 选择超参数。
+    外层测试折只用于最终无偏评估。
+  no_test_set_tuning: true
+
+evaluation:
+  regression_metrics:
+    primary:
+      - participant_macro_mae
+      - participant_macro_rmse
+    secondary:
+      - participant_macro_r_squared
+      - participant_macro_pearson_r
+      - pooled_window_mae
+      - pooled_window_rmse
+      - pooled_window_r_squared
+      - pooled_window_pearson_r
+
+  slices:
+    - all_windows
+    - near_fms_update_event
+    - far_from_fms_update_event
+    - low_fms_range
+    - medium_fms_range
+    - high_fms_range
+    - participant
+    - session
+    - gender
+    - mssq_quantile
+
+  fms_range_bins:
+    method: training_fold_quantiles
+    quantiles: [0.0, 0.33, 0.67, 1.0]
+    note: >
+      区间边界只能由训练折确定，并应用到对应测试折，
+      避免利用测试分布定义分析区间。
+
+  stability_metrics:
+    enabled: true
+    metrics:
+      - mean_absolute_prediction_step_change
+      - prediction_total_variation
+      - timeline_correlation
+    note: >
+      稳定性指标用于评估连续输出是否适合后续控制，
+      不替代回归准确率指标。
+
+  quantification_metrics:
+    enabled: true
+    metrics:
+      - concordance_correlation_coefficient
+      - bland_altman_bias
+      - systematic_bias_by_fms_range
+      - high_fms_underestimation_rate
+      - participant_timeline_correlation
+      - response_delay_after_fms_update
+      - rising_falling_direction_accuracy
+      - abnormal_jumps_per_minute
+      - fraction_of_participants_beating_baseline
+      - worst_10_percent_participant_mae
+
+  real_time_metrics:
+    enabled: true
+    device: cpu
+    warmup_runs: 100
+    measured_runs: 1000
+    batch_size: 1
+    outputs:
+      - parameter_count
+      - model_file_size_mb
+      - feature_computation_latency_ms
+      - resampling_latency_ms
+      - standardization_latency_ms
+      - mean_inference_latency_ms
+      - p95_inference_latency_ms
+      - postprocessing_latency_ms
+      - end_to_end_latency_ms
+      - peak_memory_mb
+
+streaming_validation:
+  enabled: true
+  compare_offline_and_online_outputs: true
+  offline_output_name: offline_window_prediction
+  online_output_name: streaming_buffer_prediction
+  maximum_allowed_absolute_difference: 1.0e-5
+  causal_preprocessing_only: true
+  disallowed_preprocessing:
+    - centered_moving_average
+    - bidirectional_savgol_filter
+    - future_sample_interpolation
+    - whole_sequence_standardization
+  include_end_to_end_latency: true
+
+external_validation:
+  enabled_after_internal_validation: true
+  freeze_model_before_collection: true
+  fms_used_only_as_ground_truth: true
+  model_controls_rdw: false
+  report_domain_shift: true
+  validation_levels:
+    - non_rdw_or_original_scene_validation
+    - fixed_rdw_condition_validation
+    - post_finetuning_validation
+  required_records:
+    - model_input_features
+    - raw_model_output
+    - smoothed_model_output
+    - ground_truth_fms
+    - fms_update_time
+    - model_inference_time
+    - frame_rate
+    - dropped_frames
+    - input_window_complete
+    - experimental_condition
+    - participant_id
+    - timestamp
+
+label_analysis:
+  fms_time_resolved_labels_required: true
+  do_not_collapse_to_whole_segment_label: true
+  flat_interval_sensitivity:
+    enabled: true
+    report_slices:
+      - all_windows
+      - near_fms_update_event
+      - long_unchanged_fms_interval
+  event_aware_sampling_ablation:
+    enabled: true
+    enabled_by_default: false
+    compare:
+      - ordinary_participant_balanced_sampling
+      - moderate_weight_increase_near_fms_change_points
+    warning: "Do not enable by default; over-weighting update regions may make deployed predictions too volatile."
+
+future_prediction_evaluation:
+  enabled_by_default: false
+  horizons_seconds: [2.5, 5.0, 10.0]
+  baselines:
+    oracle_persistence:
+      definition: "true FMS(t) carried to t+h"
+      deployable: false
+    predicted_current_persistence:
+      definition: "predicted current FMS(t) carried to t+h"
+      deployable: true
+  usefulness_rule: >
+    未来预测只有在跨重复外层折中稳定优于两个持续性基线，
+    且能够提供足够提前时间时，才被视为后续 RDW 的候选输入。
+  required_outputs:
+    - horizon_wise_metrics.csv
+    - persistence_comparison.csv
+
+ablation_studies:
+  enabled: true
+  studies:
+    - id: motion_only
+      dynamic_features: raw_dynamic_features
+      static_features: none
+      timestamp_feature: false
+
+    - id: motion_plus_static
+      dynamic_features: raw_dynamic_features
+      static_features: [age, gender, mssq]
+      timestamp_feature: false
+
+    - id: timestamp_ablation
+      dynamic_features: raw_dynamic_features
+      static_features: [age, gender, mssq]
+      timestamp_feature: true
+      note: >
+        仅用于检验绝对时间是否带来表面性能提升，
+        不作为默认可部署模型。
+
+    - id: derived_motion_features
+      enabled_by_default: false
+      dynamic_features:
+        - raw_dynamic_features
+        - acceleration_magnitude
+        - angular_velocity_magnitude
+      definitions:
+        acceleration_magnitude: "sqrt(ax^2 + ay^2 + az^2)"
+        angular_velocity_magnitude: "sqrt(wx^2 + wy^2 + wz^2)"
+      note: >
+        派生特征的公式、单位和计算顺序必须写入 feature_dictionary.csv。
+        第一轮不默认加入 jerk，避免在未确认滤波和噪声特性前放大噪声。
+
+statistical_analysis:
+  unit_of_analysis: participant
+  confidence_level: 0.95
+  bootstrap:
+    enabled: true
+    resampling_unit: participant
+    repetitions: 5000
+    report_confidence_intervals_for:
+      - participant_macro_mae
+      - participant_macro_rmse
+      - model_metric_differences
+
+  omnibus_model_comparison:
+    enabled: true
+    test: friedman
+    input: participant_level_out_of_fold_mae
+    alpha: 0.05
+
+  pairwise_model_comparison:
+    enabled_if_omnibus_significant: true
+    test: wilcoxon_signed_rank
+    pairing_unit: participant
+    correction: holm
+    alpha: 0.05
+    report:
+      - adjusted_p_value
+      - median_paired_difference
+      - bootstrap_confidence_interval
+      - effect_size_rank_biserial
+
+  interpretation_rules:
+    - >
+      不仅报告 p 值，同时报告差异大小和置信区间。
+    - >
+      不将窗口数量视为独立样本量；统计推断以参与者为聚类单位。
+    - >
+      若模型优势只出现在少数参与者或平坦 FMS 区间，
+      必须在论文结果中明确说明。
+    - >
+      多次随机种子结果应报告均值、标准差，并保留每次运行结果。
+
+paper_reporting:
+  required_tables:
+    - table_dataset_characteristics.csv
+    - table_feature_dictionary.csv
+    - table_model_architectures.csv
+    - table_main_model_performance.csv
+    - table_participant_level_performance.csv
+    - table_ablation_results.csv
+    - table_statistical_comparisons.csv
+    - table_realtime_performance.csv
+    - table_future_horizon_results.csv
+
+  required_figures:
+    - figure_fms_distribution.png
+    - figure_sampling_interval_distribution.png
+    - figure_true_vs_predicted.png
+    - figure_residual_distribution.png
+    - figure_participant_error_distribution.png
+    - figure_example_timelines.png
+    - figure_performance_near_update_events.png
+    - figure_model_comparison_with_ci.png
+    - figure_horizon_performance.png
+
+  metric_reporting_format:
+    cross_validation: "mean ± standard deviation across outer folds/repeats"
+    confidence_interval: "participant-cluster bootstrap 95% CI"
+    per_participant_results: true
+    per_seed_results: true
+
+  methods_record:
+    required_file: shared/data/exports/stage1/reports/methods_record.md
+    must_include:
+      - dataset_version_and_checksums
+      - inclusion_and_exclusion_rules
+      - raw_to_canonical_column_mapping
+      - feature_units_and_coordinate_frames
+      - preprocessing_order
+      - missing_value_handling
+      - window_and_label_definition
+      - split_protocol
+      - model_architecture_and_parameter_count
+      - hyperparameter_search_space
+      - optimization_and_early_stopping
+      - primary_and_secondary_metrics
+      - statistical_tests
+      - software_and_hardware_environment
+      - deviations_from_this_config
+
+prediction_records:
+  required_file: shared/data/exports/stage1/results/out_of_fold_predictions.csv
+  required_columns:
+    - run_id
+    - seed
+    - outer_repeat
+    - outer_fold
+    - model_id
+    - participant_id
+    - session_id
+    - condition_id
+    - terminal_timestamp
+    - prediction_horizon_seconds
+    - y_true
+    - y_pred_raw
+    - y_pred_clipped
+    - absolute_error
+    - squared_error
+    - fms_update_event
+    - seconds_to_nearest_fms_update_event
+    - fms_range_bin
+
+metric_records:
+  fold_metrics_file: shared/data/exports/stage1/results/fold_metrics.csv
+  participant_metrics_file: shared/data/exports/stage1/results/participant_metrics.csv
+  comparison_file: shared/data/exports/stage1/results/model_comparisons.csv
+  required_context_columns:
+    - run_id
+    - config_hash
+    - dataset_checksum
+    - model_id
+    - seed
+    - outer_repeat
+    - outer_fold
+    - split_name
+    - metric_name
+    - metric_value
+    - aggregation_level
+    - evaluation_slice
+
+artifact_validation:
+  after_training:
+    - reload_best_model_and_predict_one_window
+    - verify_feature_order
+    - verify_scaler_loaded
+    - verify_batch_size_one
+    - verify_no_future_samples_in_input
+    - verify_no_participant_overlap_between_splits
+    - verify_temporal_encoder_checkpoint_loadable
+    - verify_all_prediction_rows_trace_to_source_session
+
+definition_of_done:
+  engineering:
+    - dataset_audit_completed
+    - feature_dictionary_generated
+    - leakage_safe_windows_generated
+    - participant_group_splits_saved
+    - all_required_baselines_trained
+    - lstm_tcn_transformer_compared
+    - best_model_reloaded_successfully
+    - temporal_encoder_saved_separately
+    - batch_size_one_inference_tested
+
+  research:
+    - participant_level_out_of_fold_predictions_saved
+    - confidence_intervals_reported
+    - statistical_model_comparisons_completed
+    - ablation_studies_completed
+    - update_event_slice_reported
+    - real_time_latency_reported
+    - methods_record_generated
+    - all_primary_tables_and_figures_generated

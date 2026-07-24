@@ -1,0 +1,4 @@
+duration_seconds,candidate_windows,effective_windows,excluded_windows_missing_fraction_gt_threshold,excluded_sessions,excluded_raw_pa_id_groups,window_length_steps
+10.0,196121,192219,3902,57,56,20
+30.0,179001,176467,2534,57,56,60
+60.0,153321,152325,996,57,56,120
